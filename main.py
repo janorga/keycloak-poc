@@ -1,9 +1,18 @@
 import json
+import logging
 import os
 from pathlib import Path
 
 import requests
 from flask import Flask, jsonify, redirect, request, session, url_for
+
+# Create a logger with default settings
+logger = logging.getLogger(__name__)
+logger.setLevel(logging.DEBUG)
+
+if not logger.hasHandlers():
+    handler = logging.StreamHandler()
+    logger.addHandler(handler)
 
 
 # --- Load configuration from JSON file ---
@@ -58,10 +67,13 @@ OAUTH_SCOPE = oauth_config.get("scope", "openid profile email")
 
 @app.route("/")
 def index():
+    logger.info(f"New request to index route (IP: {request.remote_addr})")
     if "access_token" in session:
+        logger.debug("User is logged in with access token.")
         return ("Hello, you are logged in. "
                 f"<a href='{url_for('protected')}'>Access Protected Resource</a> | "
                 "<a href='{url_for('logout')}'>Logout</a>")
+    logger.debug("User is not logged in with access token.")
     return f"Welcome. <a href='{url_for('login')}'>Login with Keycloak</a>"
 
 
