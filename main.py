@@ -202,6 +202,7 @@ def protected():
 
 @app.route("/logout")
 def logout():
+    logger.info(f"Logout request from IP: {request.remote_addr}")
     # Get id_token before clearing session (needed for Keycloak)
     id_token = session.get("id_token")
 
@@ -218,9 +219,11 @@ def logout():
         logout_url = (
             f"{LOGOUT_ENDPOINT}?id_token_hint={id_token}&post_logout_redirect_uri={post_logout_redirect_uri}"
         )
+        logger.debug(f"Redirecting to Keycloak logout URL: {logout_url}")
         return redirect(logout_url)
 
     # If no id_token, just redirect to home
+    logger.debug("No id_token found; redirecting to home without Keycloak logout.")
     return redirect(url_for("index"))
 
 
