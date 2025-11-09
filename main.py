@@ -5,41 +5,41 @@ import json
 from pathlib import Path
 
 
-# --- Cargar configuración desde archivo JSON ---
+# --- Load configuration from JSON file ---
 def load_config(config_path="config.json"):
-    """Carga la configuración desde un archivo JSON local."""
+    """Loads configuration from a local JSON file."""
     config_file = Path(config_path)
 
     if not config_file.exists():
         raise FileNotFoundError(
-            f"No se encontró el archivo de configuración: {config_path}\n"
-            f"Copia config.json.example a config.json y configura tus valores."
+            f"Configuration file not found: {config_path}\n"
+            f"Copy config.json.example to config.json and configure your values."
         )
 
     with open(config_file, "r", encoding="utf-8") as f:
         return json.load(f)
 
 
-# Cargar configuración
+# Load configuration
 config = load_config()
 
 app = Flask(__name__)
 
-# Configurar Flask
+# Configure Flask
 flask_config = config.get("flask", {})
 app.secret_key = flask_config.get("secret_key") or os.urandom(24)
-BASE_URL = flask_config.get("base_url")  # URL base de la aplicación para callbacks
+BASE_URL = flask_config.get("base_url")  # Application base URL for callbacks
 
-# --- Configuración de Keycloak ---
+# --- Keycloak Configuration ---
 keycloak_config = config.get("keycloak", {})
 KEYCLOAK_URL = keycloak_config.get("url")
 CLIENT_ID = keycloak_config.get("client_id")
 CLIENT_SECRET = keycloak_config.get("client_secret")
 
-# Validar que se hayan configurado los valores requeridos
+# Validate required configuration values
 if not all([KEYCLOAK_URL, CLIENT_ID, CLIENT_SECRET]):
     raise ValueError(
-        "Faltan valores de configuración requeridos en config.json:\n"
+        "Missing required configuration values in config.json:\n"
         "keycloak.url, keycloak.client_id, keycloak.client_secret"
     )
 
@@ -47,24 +47,24 @@ AUTH_ENDPOINT = f"{KEYCLOAK_URL}/protocol/openid-connect/auth"
 TOKEN_ENDPOINT = f"{KEYCLOAK_URL}/protocol/openid-connect/token"
 LOGOUT_ENDPOINT = f"{KEYCLOAK_URL}/protocol/openid-connect/logout"
 
-# Configuración OAuth
+# OAuth Configuration
 oauth_config = config.get("oauth", {})
 OAUTH_SCOPE = oauth_config.get("scope", "openid profile email")
 
 
-# --- Rutas de la Aplicación Cliente ---
+# --- Client Application Routes ---
 
 
 @app.route("/")
 def index():
     if "access_token" in session:
-        return f"Hola, has iniciado sesión. <a href='{url_for('protected')}'>Acceder a Recurso Protegido</a> | <a href='{url_for('logout')}'>Cerrar Sesión</a>"
-    return f"Bienvenido. <a href='{url_for('login')}'>Iniciar Sesión con Keycloak</a>"
+        return f"Hello, you are logged in. <a href='{url_for('protected')}'>Access Protected Resource</a> | <a href='{url_for('logout')}'>Logout</a>"
+    return f"Welcome. <a href='{url_for('login')}'>Login with Keycloak</a>"
 
 
 @app.route("/login")
 def login():
-    # 1. Redirigir al usuario a Keycloak para autenticarse
+    # 1. Redirect user to Keycloak for authentication
     params = {
         "client_id": CLIENT_ID,
         "redirect_uri": url_for("callback", _external=True),
@@ -77,12 +77,12 @@ def login():
 
 @app.route("/callback")
 def callback():
-    # 2. Keycloak nos devuelve el código de autorización
+    # 2. Keycloak returns the authorization code
     auth_code = request.args.get("code")
     if not auth_code:
-        return "Error: No se recibió código de autorización", 400
+        return "Error: Authorization code not received", 400
 
-    # 3. Intercambiar el código por tokens (POST request)
+    # 3. Exchange the code for tokens (POST request)
     token_data = {
         "grant_type": "authorization_code",
         "client_id": CLIENT_ID,
@@ -96,10 +96,10 @@ def callback():
 
     if response.status_code != 200:
         return jsonify(
-            {"error": "Fallo al obtener tokens", "details": response_json}
+            {"error": "Failed to obtain tokens", "details": response_json}
         ), 500
 
-    # Guardar tokens en la sesión de Flask
+    # Save tokens in Flask session
     session["access_token"] = response_json.get("access_token")
     session["id_token"] = response_json.get("id_token")
     session["refresh_token"] = response_json.get("refresh_token")
@@ -108,11 +108,11 @@ def callback():
 
 
 def renew_access_token():
-    """Intenta usar el refresh token para obtener un nuevo access token."""
+    """Attempts to use the refresh token to obtain a new access token."""
     refresh_token = session.get("refresh_token")
 
     if not refresh_token:
-        # No hay refresh token, forzar el re-login
+        # No refresh token, force re-login
         return False
 
     renewal_data = {
@@ -122,20 +122,20 @@ def renew_access_token():
         "refresh_token": refresh_token,
     }
 
-    # Petición POST al mismo endpoint usado para el intercambio inicial
+    # POST request to the same endpoint used for initial exchange
     response = requests.post(TOKEN_ENDPOINT, data=renewal_data)
     response_json = response.json()
 
     if response.status_code == 200:
-        # Renovación exitosa: Actualizar los tokens en la sesión
+        # Successful renewal: Update tokens in session
         session["access_token"] = response_json.get("access_token")
-        # El refresh token también puede rotar. Si se devuelve uno nuevo, guárdalo.
+        # Refresh token may also rotate. If a new one is returned, save it.
         if response_json.get("refresh_token"):
             session["refresh_token"] = response_json.get("refresh_token")
         return True
     else:
-        # Fallo en la renovación (ej. refresh token caducado o revocado)
-        # Limpiar la sesión para forzar el re-login completo
+        # Renewal failed (e.g. refresh token expired or revoked)
+        # Clear session to force complete re-login
         session.pop("access_token", None)
         session.pop("refresh_token", None)
         return False
@@ -146,76 +146,76 @@ def protected():
     access_token = session.get("access_token")
 
     if not access_token:
-        return "Acceso denegado. Token no encontrado.", 401
+        return "Access denied. Token not found.", 401
 
     USERINFO_ENDPOINT = f"{KEYCLOAK_URL}/protocol/openid-connect/userinfo"
 
-    # --- Intento 1: Usar el token actual ---
+    # --- Attempt 1: Use current token ---
     headers = {"Authorization": f"Bearer {access_token}"}
     user_info_response = requests.get(USERINFO_ENDPOINT, headers=headers)
 
     if user_info_response.status_code == 401:
-        # --- Intento 2: El token caducó. Intentar renovar ---
+        # --- Attempt 2: Token expired. Try to renew ---
         if renew_access_token():
-            # Renovación exitosa. Obtener el nuevo token y reintentar la llamada
+            # Renewal successful. Get new token and retry the call
             new_access_token = session.get("access_token")
             if new_access_token:
                 headers = {"Authorization": f"Bearer {new_access_token}"}
                 user_info_response = requests.get(USERINFO_ENDPOINT, headers=headers)
             else:
-                # Esto no debería pasar si la renovación tuvo éxito, pero por seguridad...
-                return "Fallo interno después de la renovación.", 500
+                # This shouldn't happen if renewal succeeded, but for safety...
+                return "Internal failure after renewal.", 500
         else:
-            # Renovación fallida (ej. refresh token caducado/revocado)
+            # Renewal failed (e.g. refresh token expired/revoked)
             return (
-                "Sesión caducada. Por favor, <a href='/login'>inicie sesión</a> de nuevo.",
+                "Session expired. Please <a href='/login'>log in</a> again.",
                 401,
             )
 
-    # --- Si llegamos aquí, user_info_response debería ser 200 (después de 1 o 2) ---
+    # --- If we get here, user_info_response should be 200 (after 1 or 2 attempts) ---
     if user_info_response.status_code == 200:
         user_data = user_info_response.json()
         return jsonify(
             {
-                "msg": "Acceso exitoso al Recurso Protegido (Token renovado si fue necesario)",
-                "usuario": user_data.get("preferred_username"),
+                "msg": "Successful access to Protected Resource (Token renewed if necessary)",
+                "user": user_data.get("preferred_username"),
                 "token_info": user_data,
             }
         )
     else:
-        # Cualquier otro error del IdP
-        return "Error inesperado al acceder al recurso.", 500
+        # Any other IdP error
+        return "Unexpected error accessing resource.", 500
 
 
 @app.route("/logout")
 def logout():
-    # Obtener el id_token antes de limpiar la sesión (necesario para Keycloak)
+    # Get id_token before clearing session (needed for Keycloak)
     id_token = session.get("id_token")
 
-    # Limpiar la sesión local de Flask
+    # Clear Flask local session
     session.pop("access_token", None)
     session.pop("id_token", None)
     session.pop("refresh_token", None)
 
-    # Redirigir a Keycloak para cerrar la sesión completa
+    # Redirect to Keycloak to close complete session
     if id_token:
-        # Construir URL de logout de Keycloak con redirect configurado
+        # Build Keycloak logout URL with configured redirect
         if BASE_URL:
-            # Usar la URL base configurada en config.json
+            # Use base URL configured in config.json
             post_logout_redirect_uri = BASE_URL
         else:
-            # Fallback: usar url_for si no está configurada la base_url
+            # Fallback: use url_for if base_url is not configured
             post_logout_redirect_uri = url_for("index", _external=True)
 
         logout_url = f"{LOGOUT_ENDPOINT}?id_token_hint={id_token}&post_logout_redirect_uri={post_logout_redirect_uri}"
         return redirect(logout_url)
 
-    # Si no hay id_token, solo redirigir al inicio
+    # If no id_token, just redirect to home
     return redirect(url_for("index"))
 
 
 if __name__ == "__main__":
-    # Obtener configuración de Flask
+    # Get Flask configuration
     flask_config = config.get("flask", {})
     app.run(
         debug=flask_config.get("debug", True),
