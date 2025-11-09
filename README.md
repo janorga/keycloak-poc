@@ -62,6 +62,27 @@ Edit `config.json` with your values:
 }
 ```
 
+## Keycloak Setup
+
+### Starting a Test Keycloak Server
+
+To start a Keycloak test server using Docker:
+
+```bash
+docker run -p 8080:8080 \
+  -e KEYCLOAK_ADMIN=admin \
+  -e KEYCLOAK_ADMIN_PASSWORD=admin \
+  --name keycloak \
+  quay.io/keycloak/keycloak:latest start-dev
+```
+
+This will start Keycloak in development mode with:
+- Admin username: `admin`
+- Admin password: `admin`
+- Admin console: `http://localhost:8080/admin`
+
+⚠️ **Note**: This is for development/testing only. Do not use in production.
+
 ## Keycloak Configuration
 
 ### 1. Create a Realm
