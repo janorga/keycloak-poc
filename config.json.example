@@ -1,0 +1,17 @@
+{
+  "keycloak": {
+    "url": "<realm-url>",
+    "client_id": "<client-id>",
+    "client_secret": "<client-secret>"
+  },
+  "flask": {
+    "debug": true,
+    "port": 9090,
+    "host": "0.0.0.0",
+    "secret_key": null,
+    "base_url": "<base-url>"
+  },
+  "oauth": {
+    "scope": "openid profile email"
+  }
+}
