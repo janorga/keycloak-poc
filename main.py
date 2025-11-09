@@ -1,8 +1,9 @@
-from flask import Flask, redirect, request, url_for, session, jsonify
-import requests
-import os
 import json
+import os
 from pathlib import Path
+
+import requests
+from flask import Flask, jsonify, redirect, request, session, url_for
 
 
 # --- Load configuration from JSON file ---
@@ -11,12 +12,12 @@ def load_config(config_path="config.json"):
     config_file = Path(config_path)
 
     if not config_file.exists():
-        raise FileNotFoundError(
+        raise FileNotFoundError(  # noqa: TRY003
             f"Configuration file not found: {config_path}\n"
             f"Copy config.json.example to config.json and configure your values."
         )
 
-    with open(config_file, "r", encoding="utf-8") as f:
+    with open(config_file, encoding="utf-8") as f:
         return json.load(f)
 
 
@@ -38,7 +39,7 @@ CLIENT_SECRET = keycloak_config.get("client_secret")
 
 # Validate required configuration values
 if not all([KEYCLOAK_URL, CLIENT_ID, CLIENT_SECRET]):
-    raise ValueError(
+    raise ValueError(  # noqa: TRY003
         "Missing required configuration values in config.json:\n"
         "keycloak.url, keycloak.client_id, keycloak.client_secret"
     )
@@ -58,7 +59,9 @@ OAUTH_SCOPE = oauth_config.get("scope", "openid profile email")
 @app.route("/")
 def index():
     if "access_token" in session:
-        return f"Hello, you are logged in. <a href='{url_for('protected')}'>Access Protected Resource</a> | <a href='{url_for('logout')}'>Logout</a>"
+        return ("Hello, you are logged in. "
+                f"<a href='{url_for('protected')}'>Access Protected Resource</a> | "
+                "<a href='{url_for('logout')}'>Logout</a>")
     return f"Welcome. <a href='{url_for('login')}'>Login with Keycloak</a>"
 
 
@@ -91,13 +94,11 @@ def callback():
         "code": auth_code,
     }
 
-    response = requests.post(TOKEN_ENDPOINT, data=token_data)
+    response = requests.post(TOKEN_ENDPOINT, data=token_data, timeout=10)
     response_json = response.json()
 
     if response.status_code != 200:
-        return jsonify(
-            {"error": "Failed to obtain tokens", "details": response_json}
-        ), 500
+        return jsonify({"error": "Failed to obtain tokens", "details": response_json}), 500
 
     # Save tokens in Flask session
     session["access_token"] = response_json.get("access_token")
@@ -123,7 +124,7 @@ def renew_access_token():
     }
 
     # POST request to the same endpoint used for initial exchange
-    response = requests.post(TOKEN_ENDPOINT, data=renewal_data)
+    response = requests.post(TOKEN_ENDPOINT, data=renewal_data, timeout=10)
     response_json = response.json()
 
     if response.status_code == 200:
@@ -152,7 +153,7 @@ def protected():
 
     # --- Attempt 1: Use current token ---
     headers = {"Authorization": f"Bearer {access_token}"}
-    user_info_response = requests.get(USERINFO_ENDPOINT, headers=headers)
+    user_info_response = requests.get(USERINFO_ENDPOINT, headers=headers, timeout=10)
 
     if user_info_response.status_code == 401:
         # --- Attempt 2: Token expired. Try to renew ---
@@ -161,7 +162,7 @@ def protected():
             new_access_token = session.get("access_token")
             if new_access_token:
                 headers = {"Authorization": f"Bearer {new_access_token}"}
-                user_info_response = requests.get(USERINFO_ENDPOINT, headers=headers)
+                user_info_response = requests.get(USERINFO_ENDPOINT, headers=headers, timeout=10)
             else:
                 # This shouldn't happen if renewal succeeded, but for safety...
                 return "Internal failure after renewal.", 500
@@ -200,14 +201,11 @@ def logout():
     # Redirect to Keycloak to close complete session
     if id_token:
         # Build Keycloak logout URL with configured redirect
-        if BASE_URL:
-            # Use base URL configured in config.json
-            post_logout_redirect_uri = BASE_URL
-        else:
-            # Fallback: use url_for if base_url is not configured
-            post_logout_redirect_uri = url_for("index", _external=True)
+        post_logout_redirect_uri = BASE_URL or url_for("index", _external=True)
 
-        logout_url = f"{LOGOUT_ENDPOINT}?id_token_hint={id_token}&post_logout_redirect_uri={post_logout_redirect_uri}"
+        logout_url = (
+            f"{LOGOUT_ENDPOINT}?id_token_hint={id_token}&post_logout_redirect_uri={post_logout_redirect_uri}"
+        )
         return redirect(logout_url)
 
     # If no id_token, just redirect to home
@@ -220,5 +218,5 @@ if __name__ == "__main__":
     app.run(
         debug=flask_config.get("debug", True),
         port=flask_config.get("port", 9090),
-        host=flask_config.get("host", "0.0.0.0"),
+        host=flask_config.get("host", "0.0.0.0"),  # noqa: S104
     )
