@@ -72,7 +72,7 @@ def index():
         logger.debug("User is logged in with access token.")
         return ("Hello, you are logged in. "
                 f"<a href='{url_for('protected')}'>Access Protected Resource</a> | "
-                "<a href='{url_for('logout')}'>Logout</a>")
+                f"<a href='{url_for('logout')}'>Logout</a>")
     logger.debug("User is not logged in with access token.")
     return f"Welcome. <a href='{url_for('login')}'>Login with Keycloak</a>"
 
