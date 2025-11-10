@@ -165,7 +165,7 @@ def renew_access_token():
         return False
 
 
-def verify_access_token(access_token: str | bytes) -> bool:
+def verify_access_token(access_token: str) -> bool:
     """Verifies the JWT signature using Keycloak's JWKS endpoint."""
     try:
         jwks_client = jwt.PyJWKClient(JWKS_URL)
