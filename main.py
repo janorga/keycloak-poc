@@ -13,6 +13,8 @@ logger.setLevel(logging.DEBUG)
 
 if not logger.hasHandlers():
     handler = logging.StreamHandler()
+    formatter = logging.Formatter('[%(asctime)s] %(levelname)s in %(module)s: %(message)s')
+    handler.setFormatter(formatter)
     logger.addHandler(handler)
 
 
@@ -121,6 +123,10 @@ def callback():
     session["access_token"] = response_json.get("access_token")
     session["id_token"] = response_json.get("id_token")
     session["refresh_token"] = response_json.get("refresh_token")
+
+    logger.debug(f"Access token: {session['access_token']}\n")
+    logger.debug(f"ID token: {session['id_token']}\n")
+    logger.debug(f"Refresh token: {session['refresh_token']}\n")
 
     return redirect(url_for("index"))
 
