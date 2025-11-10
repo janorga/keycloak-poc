@@ -3,6 +3,7 @@ import logging
 import os
 from pathlib import Path
 
+import jwt
 import requests
 from flask import Flask, jsonify, redirect, request, session, url_for
 
@@ -56,6 +57,8 @@ if not all([KEYCLOAK_URL, CLIENT_ID, CLIENT_SECRET]):
 AUTH_ENDPOINT = f"{KEYCLOAK_URL}/protocol/openid-connect/auth"
 TOKEN_ENDPOINT = f"{KEYCLOAK_URL}/protocol/openid-connect/token"
 LOGOUT_ENDPOINT = f"{KEYCLOAK_URL}/protocol/openid-connect/logout"
+USERINFO_ENDPOINT = f"{KEYCLOAK_URL}/protocol/openid-connect/userinfo"
+JWKS_URL = f"{KEYCLOAK_URL}/protocol/openid-connect/certs"
 
 # OAuth Configuration
 oauth_config = config.get("oauth", {})
@@ -70,9 +73,11 @@ def index():
     logger.info(f"New request to index route (IP: {request.remote_addr})")
     if "access_token" in session:
         logger.debug("User is logged in with access token.")
-        return ("Hello, you are logged in. "
-                f"<a href='{url_for('protected')}'>Access Protected Resource</a> | "
-                f"<a href='{url_for('logout')}'>Logout</a>")
+        return (
+            "Hello, you are logged in. "
+            f"<a href='{url_for('protected')}'>Access Protected Resource</a> | "
+            f"<a href='{url_for('logout')}'>Logout</a>"
+        )
     logger.debug("User is not logged in with access token.")
     return f"Welcome. <a href='{url_for('login')}'>Login with Keycloak</a>"
 
@@ -154,39 +159,39 @@ def renew_access_token():
         return False
 
 
+def verify_access_token(access_token: str | bytes) -> bool:
+    """Verifies the JWT signature using Keycloak's JWKS endpoint."""
+    try:
+        jwks_client = jwt.PyJWKClient(JWKS_URL)
+        signing_key = jwks_client.get_signing_key_from_jwt(access_token)
+        # Decode and verify the token
+        decoded_token = jwt.decode(
+            access_token,
+            signing_key.key,
+            algorithms=["RS256"],
+            audience="account",
+            options={"verify_exp": True},
+        )
+        logger.debug(f"Token verified successfully for user: {decoded_token.get('preferred_username')}")
+    except jwt.ExpiredSignatureError:
+        logger.warning("Token has expired")
+        raise
+    except jwt.InvalidTokenError:
+        logger.exception("Invalid token")
+        return False
+    except Exception:
+        logger.exception("Token verification failed")
+        return False
+
+    return True
+
+
 @app.route("/protected")
 def protected():
-    access_token = session.get("access_token")
-
-    if not access_token:
-        return "Access denied. Token not found.", 401
-
-    USERINFO_ENDPOINT = f"{KEYCLOAK_URL}/protocol/openid-connect/userinfo"
-
-    # --- Attempt 1: Use current token ---
-    headers = {"Authorization": f"Bearer {access_token}"}
-    user_info_response = requests.get(USERINFO_ENDPOINT, headers=headers, timeout=10)
-
-    if user_info_response.status_code == 401:
-        # --- Attempt 2: Token expired. Try to renew ---
-        if renew_access_token():
-            # Renewal successful. Get new token and retry the call
-            new_access_token = session.get("access_token")
-            if new_access_token:
-                headers = {"Authorization": f"Bearer {new_access_token}"}
-                user_info_response = requests.get(USERINFO_ENDPOINT, headers=headers, timeout=10)
-            else:
-                # This shouldn't happen if renewal succeeded, but for safety...
-                return "Internal failure after renewal.", 500
-        else:
-            # Renewal failed (e.g. refresh token expired/revoked)
-            return (
-                "Session expired. Please <a href='/login'>log in</a> again.",
-                401,
-            )
-
-    # --- If we get here, user_info_response should be 200 (after 1 or 2 attempts) ---
-    if user_info_response.status_code == 200:
+    def return_protected_info():
+        access_token = session.get("access_token")
+        headers = {"Authorization": f"Bearer {access_token}"}
+        user_info_response = requests.get(USERINFO_ENDPOINT, headers=headers, timeout=10)
         user_data = user_info_response.json()
         return jsonify(
             {
@@ -195,9 +200,37 @@ def protected():
                 "token_info": user_data,
             }
         )
-    else:
-        # Any other IdP error
-        return "Unexpected error accessing resource.", 500
+
+    access_token = session.get("access_token")
+
+    if not access_token:
+        return "Access denied. Token not found.", 401
+
+    try:
+        if verify_access_token(access_token):
+            logger.debug("Access token is valid. Accessing protected resource.")
+            return return_protected_info()
+        else:
+            return (
+                "Session error. Please <a href='/login'>log in</a> again.",
+                401,
+            )
+    except jwt.ExpiredSignatureError:
+        if renew_access_token():
+            # Renewal successful. Get new token and retry the call
+            logger.info("Access token renewed successfully.")
+            new_access_token = session.get("access_token")
+            if new_access_token:
+                return return_protected_info()
+            else:
+                logger.exception("Internal failure after renewal.")
+                return "Internal failure after renewal.", 500
+        else:
+            logger.exception("Token renewal failed.")
+            return (
+                "Session error. Please <a href='/login'>log in</a> again.",
+                401,
+            )
 
 
 @app.route("/logout")
