@@ -103,6 +103,7 @@ def callback():
     auth_code = request.args.get("code")
     if not auth_code:
         return "Error: Authorization code not received", 400
+    logger.debug(f"Authorization code received: {auth_code}\n")
 
     # 3. Exchange the code for tokens (POST request)
     token_data = {
