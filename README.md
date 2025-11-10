@@ -45,16 +45,16 @@ Edit `config.json` with your values:
 ```json
 {
   "keycloak": {
-    "url": "http://192.168.1.76:8080/realms/YourRealm",
-    "client_id": "your-client-id",
-    "client_secret": "your-client-secret"
+    "url": "<realm-url>",
+    "client_id": "<client-id>",
+    "client_secret": "<client-secret>"
   },
   "flask": {
     "debug": true,
     "port": 9090,
     "host": "0.0.0.0",
     "secret_key": null,
-    "base_url": "http://192.168.1.76:9090"
+    "base_url": "<base-url>"
   },
   "oauth": {
     "scope": "openid profile email"
@@ -125,7 +125,7 @@ In the Keycloak admin console, create a new realm (e.g., "Laboratory").
 python main.py
 ```
 
-The application will be available at `http://192.168.1.76:9090` (or your configured URL).
+The application will be available at `http://localhost:9090` (from localhost, or your configured available host/port).
 
 ### Available routes
 
