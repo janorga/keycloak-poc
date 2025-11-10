@@ -98,14 +98,17 @@ In the Keycloak admin console, create a new realm (e.g., "Laboratory").
 
 3. In the **Settings** tab:
    - **Valid Redirect URIs**: 
-     - `http://192.168.1.76:9090/callback`
+     - `http://<client-ip>:9090/callback`
      - `http://localhost:9090/callback`
    - **Valid Post Logout Redirect URIs**:
-     - `http://192.168.1.76:9090`
+     - `http://<client-ip>:9090`
      - `http://localhost:9090`
-   - **Web Origins**: `+` (allows all valid origins)
+   - **Web Origins**: `*` (allows all valid origins)
 
-4. In the **Credentials** tab:
+4. In Keys tab:
+   - Configure a RSA key pair
+
+5. In the **Credentials** tab:
    - Copy the **Client Secret** and put it in `config.json`
 
 ### 3. Create a Test User
@@ -146,9 +149,9 @@ The application will be available at `http://192.168.1.76:9090` (or your configu
    - Saves tokens in Flask session
 
 3. **Access Protected Resources**
-   - Uses access token in `Authorization: Bearer <token>` header
    - If token expires, attempts to renew it with refresh token
    - If renewal fails, requests re-authentication
+   - Access the protetected resource, also retreives user info from Keycloak
 
 4. **Logout**
    - Clears Flask local session
