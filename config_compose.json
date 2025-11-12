@@ -1,0 +1,23 @@
+{
+  "keycloak": {
+    "url": "http://192.168.1.76:8080/realms/Laboratorio",
+    "client_id": "flask-client",
+    "client_secret": "EQTvx3W8GyiW45oXsFLL3qJRQpVC5lst"
+  },
+  "flask": {
+    "debug": true,
+    "port": 9090,
+    "host": "0.0.0.0",
+    "secret_key": null,
+    "base_url": "http://192.168.1.76:9090"
+  },
+  "oauth": {
+    "scope": "openid profile email"
+  },
+  "resource_server": {
+    "debug": true,
+    "port": 9091,
+    "host": "0.0.0.0",
+    "url": "http://resource-server:9091"
+  }
+}

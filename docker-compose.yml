@@ -1,0 +1,61 @@
+services:
+
+  # keycloak:
+  #   image: quay.io/keycloak/keycloak:latest
+  #   container_name: authlab-keycloak
+  #   environment:
+  #     - KEYCLOAK_ADMIN=admin
+  #     - KEYCLOAK_ADMIN_PASSWORD=admin
+  #     - KC_HTTP_PORT=8080
+  #   ports:
+  #     - "8080:8080"
+  #   command: start-dev
+  #   networks:
+  #     - authlab-network
+  #   healthcheck:
+  #     test: ["CMD", "curl", "-f", "http://localhost:8080/health/ready"]
+  #     interval: 10s
+  #     timeout: 5s
+  #     retries: 5
+  #     start_period: 60s
+  #
+  main-app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: authlab-main-app
+    ports:
+      - "9090:9090"
+    networks:
+      - authlab-network
+    depends_on:
+      # keycloak:
+      #   condition: service_healthy
+      resource-server:
+        condition: service_started
+    environment:
+      - PYTHONUNBUFFERED=1
+    volumes:
+      - ./config_compose.json:/app/config.json:ro
+    restart: unless-stopped
+
+  resource-server:
+    build:
+      context: .
+      dockerfile: Dockerfile.resource
+    container_name: authlab-resource-server
+    networks:
+      - authlab-network
+    environment:
+      - PYTHONUNBUFFERED=1
+    # depends_on:
+      # keycloak:
+      #   condition: service_healthy
+    volumes:
+      - ./config_compose.json:/app/config.json:ro
+    restart: unless-stopped
+    # No ports exposed - only accessible internally
+
+networks:
+  authlab-network:
+    driver: bridge
