@@ -14,7 +14,6 @@ RUN uv sync --frozen --no-dev
 
 # Copy application files
 COPY resource_server.py ./
-COPY config.json ./
 
 # Expose the resource server port
 EXPOSE 9091

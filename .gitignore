@@ -11,4 +11,5 @@ wheels/
 .venv
 
 # Configuration files with sensitive data
-config.json
+config.yaml
+config_compose.yaml

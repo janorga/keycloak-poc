@@ -14,7 +14,6 @@ RUN uv sync --frozen --no-dev
 
 # Copy application files
 COPY main.py ./
-COPY config.json ./
 
 # Expose the application port
 EXPOSE 9090

@@ -1,0 +1,20 @@
+keycloak:
+  url: "http://keycloak:8080/realms/<your-realm-name>"
+  client_id: "<client-id>"
+  client_secret: "<client-secret>"
+
+flask:
+  debug: true
+  port: 9090
+  host: "0.0.0.0"
+  secret_key: null
+  base_url: "http://localhost:9090"
+
+oauth:
+  scope: "openid profile email"
+
+resource_server:
+  debug: true
+  port: 9091
+  host: "0.0.0.0"
+  url: "http://resource-server:9091"

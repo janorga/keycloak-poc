@@ -1,9 +1,9 @@
-import json
 import logging
 from pathlib import Path
 
 import jwt
 import requests
+import yaml
 from flask import Flask, jsonify, request
 
 # Create a logger with default settings
@@ -17,19 +17,19 @@ if not logger.hasHandlers():
     logger.addHandler(handler)
 
 
-# --- Load configuration from JSON file ---
-def load_config(config_path="config.json"):
-    """Loads configuration from a local JSON file."""
+# --- Load configuration from YAML file ---
+def load_config(config_path="config.yaml"):
+    """Loads configuration from a local YAML file."""
     config_file = Path(config_path)
 
     if not config_file.exists():
         raise FileNotFoundError(  # noqa: TRY003
             f"Configuration file not found: {config_path}\n"
-            f"Copy config.json.example to config.json and configure your values."
+            f"Copy config.yaml.example to config.yaml and configure your values."
         )
 
     with open(config_file, encoding="utf-8") as f:
-        return json.load(f)
+        return yaml.safe_load(f)
 
 
 # Load configuration

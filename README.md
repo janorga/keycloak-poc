@@ -10,7 +10,7 @@ Sample Flask application that implements authentication and authorization using 
 - ✅ Access to protected resources
 - ✅ Separate resource server architecture
 - ✅ Complete logout (local session + Keycloak SSO session)
-- ✅ Configuration via JSON file
+- ✅ Configuration via YAML file
 
 ## Requirements
 
@@ -20,6 +20,7 @@ Sample Flask application that implements authentication and authorization using 
 - Requests 2.32.5+
 - PyJWT 2.10.1+
 - Cryptography 46.0.3+
+- PyYAML 6.0.2+
 
 ## Installation
 
@@ -35,40 +36,37 @@ cd authlab
 uv sync
 
 # Or with pip
-pip install flask>=3.1.2 requests>=2.32.5 pyjwt>=2.10.1 cryptography>=46.0.3
+pip install flask>=3.1.2 requests>=2.32.5 pyjwt>=2.10.1 cryptography>=46.0.3 pyyaml>=6.0.2
 ```
 
 3. **Configure the application**
 ```bash
-cp config.json.example config.json
+cp config.yaml.example config.yaml
 ```
 
-Edit `config.json` with your values:
+Edit `config.yaml` with your values:
 
-```json
-{
-  "keycloak": {
-    "url": "<realm-url>",
-    "client_id": "<client-id>",
-    "client_secret": "<client-secret>"
-  },
-  "flask": {
-    "debug": true,
-    "port": 9090,
-    "host": "0.0.0.0",
-    "secret_key": null,
-    "base_url": "<base-url>"
-  },
-  "oauth": {
-    "scope": "openid profile email"
-  },
-  "resource_server": {
-    "debug": true,
-    "port": 9091,
-    "host": "0.0.0.0",
-    "url": "http://localhost:9091"
-  }
-}
+```yaml
+keycloak:
+  url: "http://keycloak:8080/realms/<your-realm-name>"
+  client_id: "<client-id>"
+  client_secret: "<client-secret>"
+
+flask:
+  debug: true
+  port: 9090
+  host: "0.0.0.0"
+  secret_key: null
+  base_url: "http://localhost:9090"
+
+oauth:
+  scope: "openid profile email"
+
+resource_server:
+  debug: true
+  port: 9091
+  host: "0.0.0.0"
+  url: "http://resource-server:9091"
 ```
 
 ## Keycloak Setup
@@ -118,7 +116,7 @@ In the Keycloak admin console, create a new realm (e.g., "Laboratory").
    - Configure a RSA key pair
 
 5. In the **Credentials** tab:
-   - Copy the **Client Secret** and put it in `config.json`
+   - Copy the **Client Secret** and put it in `config.yaml`
 
 ### 3. Create a Test User
 
@@ -195,11 +193,15 @@ The main application will be available at `http://localhost:9090`.
 authlab/
 ├── main.py                 # Main Flask application (authentication server)
 ├── resource_server.py      # Resource server (protected resources)
-├── config.json            # Configuration (not versioned)
-├── config.json.example    # Configuration template
+├── config.yaml            # Configuration (not versioned)
+├── config.yaml.example    # Configuration template
 ├── pyproject.toml         # Project dependencies
 ├── uv.lock               # uv lock file
+├── Dockerfile            # Docker image for main app
+├── Dockerfile.resource   # Docker image for resource server
+├── docker-compose.yml    # Docker Compose configuration
 ├── .gitignore            # Files ignored by git
+├── .dockerignore         # Files ignored by Docker
 └── README.md             # This file
 ```
 
@@ -235,7 +237,7 @@ This project demonstrates a realistic OAuth2/OpenID Connect architecture with se
 
 ## Detailed Configuration
 
-### config.json
+### config.yaml
 
 #### `keycloak` section
 - **url**: Complete URL of the Keycloak realm
@@ -262,7 +264,7 @@ This project demonstrates a realistic OAuth2/OpenID Connect architecture with se
 
 ⚠️ **Important:**
 
-- **DO NOT** upload `config.json` to the repository (already in `.gitignore`)
+- **DO NOT** upload `config.yaml` to the repository (already in `.gitignore`)
 - Use environment variables in production for sensitive data
 - Configure `secret_key` with a fixed value in production
 - Use HTTPS in production
@@ -271,7 +273,7 @@ This project demonstrates a realistic OAuth2/OpenID Connect architecture with se
 ## Troubleshooting
 
 ### "Invalid redirect uri"
-- Verify that URIs in Keycloak exactly match `base_url` in config.json
+- Verify that URIs in Keycloak exactly match `base_url` in config.yaml
 - Check for no extra spaces or trailing slashes
 
 ### "Token not found" at /protected
@@ -280,16 +282,17 @@ This project demonstrates a realistic OAuth2/OpenID Connect architecture with se
 
 ### "Failed to connect to resource server"
 - Ensure the resource server is running on port 9091
-- Check that `resource_server.url` in config.json is correct
+- Check that `resource_server.url` in config.yaml is correct
 - Verify both servers can communicate (firewall settings)
 
 ### Session doesn't close in Keycloak
 - Verify that `base_url` is configured correctly
 - Ensure "Valid Post Logout Redirect URIs" is configured in Keycloak
 
-### Error loading config.json
-- Verify the file exists and has valid JSON format
-- Copy `config.json.example` and rename it to `config.json`
+### Error loading config.yaml
+- Verify the file exists and has valid YAML format
+- Copy `config.yaml.example` and rename it to `config.yaml`
+- Check for proper indentation (YAML is sensitive to spaces)
 
 ## Development
 
@@ -303,8 +306,8 @@ python main.py
 ```
 
 ### Change ports
-- Main application: Modify `flask.port` in `config.json`
-- Resource server: Modify `resource_server.port` in `config.json`
+- Main application: Modify `flask.port` in `config.yaml`
+- Resource server: Modify `resource_server.port` in `config.yaml`
 
 ### View Keycloak logs
 In the admin console: **Realm Settings** > **Events**

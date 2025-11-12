@@ -1,24 +1,23 @@
 services:
+  keycloak:
+    image: quay.io/keycloak/keycloak:latest
+    container_name: authlab-keycloak
+    environment:
+      - KEYCLOAK_ADMIN=admin
+      - KEYCLOAK_ADMIN_PASSWORD=admin
+      - KC_HTTP_PORT=8080
+    ports:
+      - "8080:8080"
+    command: start-dev
+    networks:
+      - authlab-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/health/ready"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 60s
 
-  # keycloak:
-  #   image: quay.io/keycloak/keycloak:latest
-  #   container_name: authlab-keycloak
-  #   environment:
-  #     - KEYCLOAK_ADMIN=admin
-  #     - KEYCLOAK_ADMIN_PASSWORD=admin
-  #     - KC_HTTP_PORT=8080
-  #   ports:
-  #     - "8080:8080"
-  #   command: start-dev
-  #   networks:
-  #     - authlab-network
-  #   healthcheck:
-  #     test: ["CMD", "curl", "-f", "http://localhost:8080/health/ready"]
-  #     interval: 10s
-  #     timeout: 5s
-  #     retries: 5
-  #     start_period: 60s
-  #
   main-app:
     build:
       context: .
@@ -29,14 +28,14 @@ services:
     networks:
       - authlab-network
     depends_on:
-      # keycloak:
-      #   condition: service_healthy
+      keycloak:
+        condition: service_healthy
       resource-server:
         condition: service_started
     environment:
       - PYTHONUNBUFFERED=1
     volumes:
-      - ./config_compose.json:/app/config.json:ro
+      - ./config_compose.yaml:/app/config.yaml:ro
     restart: unless-stopped
 
   resource-server:
@@ -48,11 +47,11 @@ services:
       - authlab-network
     environment:
       - PYTHONUNBUFFERED=1
-    # depends_on:
-      # keycloak:
-      #   condition: service_healthy
+    depends_on:
+      keycloak:
+        condition: service_healthy
     volumes:
-      - ./config_compose.json:/app/config.json:ro
+      - ./config_compose.yaml:/app/config.yaml:ro
     restart: unless-stopped
     # No ports exposed - only accessible internally
 
