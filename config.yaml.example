@@ -1,5 +1,5 @@
 keycloak:
-  url: "http://keycloak:8080/realms/<your-realm-name>"
+  url: "http://<keycloak-host>:8080/realms/<your-realm-name>"
   client_id: "<client-id>"
   client_secret: "<client-secret>"
 
@@ -8,7 +8,7 @@ flask:
   port: 9090
   host: "0.0.0.0"
   secret_key: null
-  base_url: "http://localhost:9090"
+  base_url: "http://<app-host>:9090"
 
 oauth:
   scope: "openid profile email"
@@ -17,4 +17,5 @@ resource_server:
   debug: true
   port: 9091
   host: "0.0.0.0"
-  url: "http://resource-server:9091"
+  # This could be docker compose service if running with compose
+  url: "http://<resource_server_host>:9091"
