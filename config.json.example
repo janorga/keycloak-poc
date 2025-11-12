@@ -13,5 +13,11 @@
   },
   "oauth": {
     "scope": "openid profile email"
+  },
+  "resource_server": {
+    "debug": true,
+    "port": 9091,
+    "host": "0.0.0.0",
+    "url": "<resource-server-url>"
   }
 }

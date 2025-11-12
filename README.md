@@ -8,6 +8,7 @@ Sample Flask application that implements authentication and authorization using 
 - ✅ Token management (access, refresh, id tokens)
 - ✅ Automatic renewal of expired tokens
 - ✅ Access to protected resources
+- ✅ Separate resource server architecture
 - ✅ Complete logout (local session + Keycloak SSO session)
 - ✅ Configuration via JSON file
 
@@ -58,6 +59,12 @@ Edit `config.json` with your values:
   },
   "oauth": {
     "scope": "openid profile email"
+  },
+  "resource_server": {
+    "debug": true,
+    "port": 9091,
+    "host": "0.0.0.0",
+    "url": "http://localhost:9091"
   }
 }
 ```
@@ -119,23 +126,42 @@ In the Keycloak admin console, create a new realm (e.g., "Laboratory").
 
 ## Usage
 
-### Start the application
+### Start the servers
 
+This application uses a two-server architecture to simulate a realistic OAuth2/OpenID Connect scenario:
+
+1. **Start the Resource Server** (handles protected resources):
+```bash
+python resource_server.py
+```
+
+The resource server will be available at `http://localhost:9091`.
+
+2. **Start the Main Application** (handles authentication):
 ```bash
 python main.py
 ```
 
-The application will be available at `http://localhost:9090` (from localhost, or your configured available host/port).
+The main application will be available at `http://localhost:9090`.
 
 ### Available routes
+
+#### Main Application (port 9090)
 
 | Route | Description |
 |------|-------------|
 | `/` | Home page |
 | `/login` | Starts authentication flow with Keycloak |
 | `/callback` | OAuth2 callback (handles authorization code) |
-| `/protected` | Protected resource that requires authentication |
+| `/protected` | Forwards requests to resource server with access token |
 | `/logout` | Logs out from Flask and Keycloak |
+
+#### Resource Server (port 9091)
+
+| Route | Description |
+|------|-------------|
+| `/api/protected-resource` | Protected endpoint requiring valid Bearer token |
+| `/health` | Health check endpoint |
 
 ## Authentication Flow
 
@@ -149,9 +175,11 @@ The application will be available at `http://localhost:9090` (from localhost, or
    - Saves tokens in Flask session
 
 3. **Access Protected Resources**
-   - If token expires, attempts to renew it with refresh token
+   - Main application forwards request to resource server with access token
+   - Resource server validates the token
+   - If token expires, main application attempts to renew it with refresh token
    - If renewal fails, requests re-authentication
-   - Access the protetected resource, also retreives user info from Keycloak
+   - Resource server retrieves user info from Keycloak and returns protected data
 
 4. **Logout**
    - Clears Flask local session
@@ -163,7 +191,8 @@ The application will be available at `http://localhost:9090` (from localhost, or
 
 ```
 authlab/
-├── main.py                 # Main Flask application
+├── main.py                 # Main Flask application (authentication server)
+├── resource_server.py      # Resource server (protected resources)
 ├── config.json            # Configuration (not versioned)
 ├── config.json.example    # Configuration template
 ├── pyproject.toml         # Project dependencies
@@ -171,6 +200,36 @@ authlab/
 ├── .gitignore            # Files ignored by git
 └── README.md             # This file
 ```
+
+## Architecture
+
+This project demonstrates a realistic OAuth2/OpenID Connect architecture with separate servers:
+
+```
+┌─────────────┐         ┌──────────────┐         ┌─────────────┐
+│   Browser   │◄───────►│ Main App     │◄───────►│  Keycloak   │
+│             │         │ (port 9090)  │         │  (IdP)      │
+└─────────────┘         └──────────────┘         └─────────────┘
+                              │
+                              │ HTTP + Bearer Token
+                              ▼
+                        ┌──────────────┐         ┌─────────────┐
+                        │  Resource    │◄───────►│  Keycloak   │
+                        │  Server      │         │  (Verify)   │
+                        │ (port 9091)  │         └─────────────┘
+                        └──────────────┘
+```
+
+1. **Main Application** (main.py):
+   - Handles user authentication with Keycloak
+   - Manages OAuth2 authorization code flow
+   - Stores and renews access tokens
+   - Forwards authenticated requests to resource server
+
+2. **Resource Server** (resource_server.py):
+   - Validates access tokens independently
+   - Serves protected resources
+   - Verifies token signature using Keycloak's public keys (JWKS)
 
 ## Detailed Configuration
 
@@ -190,6 +249,12 @@ authlab/
 
 #### `oauth` section
 - **scope**: Requested OpenID Connect scopes
+
+#### `resource_server` section
+- **debug**: Resource server debug mode (true/false)
+- **port**: Port where the resource server runs
+- **host**: Resource server host (`0.0.0.0` for external access)
+- **url**: Complete URL of the resource server for internal communication
 
 ## Security
 
@@ -211,6 +276,11 @@ authlab/
 - Make sure you're authenticated first by visiting `/login`
 - Verify that Flask session is working
 
+### "Failed to connect to resource server"
+- Ensure the resource server is running on port 9091
+- Check that `resource_server.url` in config.json is correct
+- Verify both servers can communicate (firewall settings)
+
 ### Session doesn't close in Keycloak
 - Verify that `base_url` is configured correctly
 - Ensure "Valid Post Logout Redirect URIs" is configured in Keycloak
@@ -223,11 +293,16 @@ authlab/
 
 ### Run in debug mode
 ```bash
+# Terminal 1 - Resource Server
+python resource_server.py
+
+# Terminal 2 - Main Application
 python main.py
 ```
 
-### Change port
-Modify `flask.port` in `config.json`.
+### Change ports
+- Main application: Modify `flask.port` in `config.json`
+- Resource server: Modify `resource_server.port` in `config.json`
 
 ### View Keycloak logs
 In the admin console: **Realm Settings** > **Events**

@@ -13,7 +13,7 @@ logger.setLevel(logging.DEBUG)
 
 if not logger.hasHandlers():
     handler = logging.StreamHandler()
-    formatter = logging.Formatter('[%(asctime)s] %(levelname)s in %(module)s: %(message)s')
+    formatter = logging.Formatter("[%(asctime)s] %(levelname)s in %(module)s: %(message)s")
     handler.setFormatter(formatter)
     logger.addHandler(handler)
 
@@ -195,18 +195,43 @@ def verify_access_token(access_token: str) -> bool:
 
 @app.route("/protected")
 def protected():
-    def return_protected_info():
+    def call_protected_resource():
+        """Calls the external resource server with the access token."""
         access_token = session.get("access_token")
-        headers = {"Authorization": f"Bearer {access_token}"}
-        user_info_response = requests.get(USERINFO_ENDPOINT, headers=headers, timeout=10)
-        user_data = user_info_response.json()
-        return jsonify(
-            {
-                "msg": "Successful access to Protected Resource (Token renewed if necessary)",
-                "user": user_data.get("preferred_username"),
-                "token_info": user_data,
-            }
+        logger.debug(f"Using access token to call protected resource: {access_token}")
+
+        # Get resource server URL from config or use default
+        resource_server_config = config.get("resource_server", {})
+        resource_server_url = resource_server_config.get(
+            "url", f"http://localhost:{resource_server_config.get('port', 9091)}"
         )
+        protected_endpoint = f"{resource_server_url}/api/protected-resource"
+
+        # Send request to resource server with Bearer token
+        headers = {"Authorization": f"Bearer {access_token}"}
+
+        try:
+            logger.info(f"Forwarding request to resource server: {protected_endpoint}")
+            response = requests.get(protected_endpoint, headers=headers, timeout=10)
+
+            # Forward the response from resource server to client
+            if response.status_code == 200:
+                logger.debug("Successfully received protected resource from resource server")
+                logger.debug("Returning protected resource to client")
+                return jsonify(response.json()), 200
+            else:
+                logger.warning(f"Resource server returned error: {response.status_code}")
+                logger.debug("Returning error response from resource server to client")
+                return jsonify(response.json()), response.status_code
+
+        except requests.exceptions.RequestException:
+            logger.exception("Failed to connect to resource server")
+            return jsonify(
+                {
+                    "error": "Failed to connect to resource server",
+                    "details": "The resource server may be down or unreachable",
+                }
+            ), 503
 
     access_token = session.get("access_token")
 
@@ -216,7 +241,7 @@ def protected():
     try:
         if verify_access_token(access_token):
             logger.debug("Access token is valid. Accessing protected resource.")
-            return return_protected_info()
+            return call_protected_resource()
         else:
             return (
                 "Session error. Please <a href='/login'>log in</a> again.",
@@ -228,7 +253,7 @@ def protected():
             logger.info("Access token renewed successfully.")
             new_access_token = session.get("access_token")
             if new_access_token:
-                return return_protected_info()
+                return call_protected_resource()
             else:
                 logger.exception("Internal failure after renewal.")
                 return "Internal failure after renewal.", 500
