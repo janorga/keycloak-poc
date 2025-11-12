@@ -16,8 +16,10 @@ Sample Flask application that implements authentication and authorization using 
 
 - Python 3.13+
 - Keycloak (installed and configured)
-- Flask
-- Requests
+- Flask 3.1.2+
+- Requests 2.32.5+
+- PyJWT 2.10.1+
+- Cryptography 46.0.3+
 
 ## Installation
 
@@ -33,7 +35,7 @@ cd authlab
 uv sync
 
 # Or with pip
-pip install flask requests
+pip install flask>=3.1.2 requests>=2.32.5 pyjwt>=2.10.1 cryptography>=46.0.3
 ```
 
 3. **Configure the application**
