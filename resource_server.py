@@ -112,6 +112,8 @@ def protected_resource():
 
         logger.info(f"Protected resource accessed by user: {user_data.get('preferred_username')}")
 
+        logger.debug(f"User info: {user_data}")
+
         # Return the protected resource data
         return jsonify(
             {
