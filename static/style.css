@@ -335,58 +335,62 @@ pre.tokenraw { word-break: break-all; white-space: pre-wrap; font-size: 14.5px; 
   );
 }
 
-/* Each message is a grid cell of its own, spanning exactly the lifelines it
-   touches. The label is then a normal centred block inside that cell, so it can
-   never escape sideways. An earlier version positioned the label absolutely on
-   a percentage of the whole diagram, which made a short arrow's label collide
-   with its neighbours: on a projector, unreadable. */
+/* Every message row spans the FULL width, so all rows share one coordinate
+   space and the geometry is plain arithmetic on 25% columns. Letting each row
+   span only its own endpoints looked tidier in the markup and was a trap: a
+   message travelling right to left produced a negative width, so half the
+   arrows in these diagrams were drawn without a shaft at all. */
 .m {
-  position: relative; height: 66px; padding: 3px 4px 0;
-  display: flex; align-items: flex-start; justify-content: center;
-  text-align: center;
+  grid-column: 1 / -1;
+  position: relative; height: 72px; margin: 1px 0;
 }
-/* Labels break BETWEEN words, never inside one. `anywhere` was splitting
-   "302" into "3" over "0" over "2" on a narrow column, which is exactly the
-   kind of thing that reads as a bug from the back of a classroom. */
+/* The label, centred on the midpoint of the two lifelines it connects --
+   ((f-0.5) + (t-0.5)) / 2 columns, i.e. (f + t - 1) * 12.5% -- and given an
+   explicit width rather than left to shrink-to-fit. An absolutely positioned
+   box with `left` set is capped by the space between that `left` and the right
+   edge of the containing block, so the longest labels wrapped inside half the
+   room they actually had. The +48px lets a label run a little wider than the
+   shaft it annotates, which is what stops "GET /callback?code&state" and
+   "{code, client_secret}" from breaking in two.
+   Breaks BETWEEN words, never inside one: `anywhere` was splitting "302" into
+   "3" over "0" over "2", which reads as a bug from the back of a room. */
 .m .lbl {
-  position: relative; z-index: 1;
-  font-size: 12.5px; line-height: 1.25; color: var(--ink);
+  position: absolute; z-index: 1; top: 3px;
+  left: calc((var(--f) + var(--t) - 1) * 12.5%);
+  transform: translateX(-50%);
+  width: calc((max(var(--f), var(--t)) - min(var(--f), var(--t))) * 25% + 48px);
+  font-size: 12.5px; line-height: 1.25; text-align: center; color: var(--ink);
   background: var(--bg); padding: 1px 5px; border-radius: 4px;
   overflow-wrap: normal; word-break: keep-all;
 }
-/* The shaft, inset half a column at each end so it starts and finishes on the
-   lifeline centres rather than on the column edges. */
+/* The shaft, inset half a column at each end so it starts and lands on the
+   lifeline CENTRES, not on the column edges. min()/max() rather than an assumed
+   order, because three of the eight messages run right to left. */
 .m::before {
-  content: ""; position: absolute; top: 40px; height: 2px;
-  left: calc((var(--f) - 0.5) * 25%);
-  width: calc((var(--t) - var(--f)) * 25%);
+  content: ""; position: absolute; top: 54px; height: 2px;
+  left: calc((min(var(--f), var(--t)) - 0.5) * 25%);
+  width: calc((max(var(--f), var(--t)) - min(var(--f), var(--t))) * 25%);
   background: var(--muted);
 }
-/* The head. Drawn as a triangle so no glyph or icon font is needed. */
+/* The head, a triangle so no glyph or icon font is needed, always sitting on
+   the lifeline the message REACHES. Which way it points is the one thing CSS
+   cannot work out from --f and --t, so .rev marks the leftward messages. */
 .m::after {
-  content: ""; position: absolute; top: 34px;
+  content: ""; position: absolute; top: 49px;
   left: calc((var(--t) - 0.5) * 25%);
-  margin-left: -2px;
   border: 6px solid transparent;
-  border-left: 9px solid var(--muted);
-  border-right: 0;
+  border-left: 9px solid var(--muted); border-right: 0;
+  transform: translateX(-9px);
+}
+.m.rev::after {
+  border-left: 0; border-right: 9px solid var(--muted);
+  transform: none;
 }
 
 /* --f is the lifeline the message leaves and --t the one it reaches, so the
-   markup reads as plain English ("f-3 t-4" = app to Keycloak). The cell spans
-   from --f to --t inclusive, and the shaft below is inset half a column at each
-   end so it starts and lands on the lifeline centres, not the column edges. */
-.m.f-1 { grid-column: 1 / 2; --f: 1; }
-.m.f-2 { grid-column: 2 / 3; --f: 2; }
-.m.f-3 { grid-column: 3 / 4; --f: 3; }
-.m.f-4 { grid-column: 4 / 5; --f: 4; }
-.m.t-2 { grid-column-end: 3; --t: 2; }
-.m.t-3 { grid-column-end: 4; --t: 3; }
-.m.t-4 { grid-column-end: 5; --t: 4; }
-.m.f-2.t-2, .m.f-3.t-3, .m.f-4.t-4 { grid-column-end: auto; }
-/* A message between two lifelines needs a little breathing room, otherwise the
-   two shafts of the rows above and below sit right on its label. */
-.m { margin: 1px 0; }
+   markup reads as plain English ("f-3 t-4" = app to Keycloak). */
+.m.f-1 { --f: 1; } .m.f-2 { --f: 2; } .m.f-3 { --f: 3; } .m.f-4 { --f: 4; }
+.m.t-2 { --t: 2; } .m.t-3 { --t: 3; } .m.t-4 { --t: 4; }
 
 /* The back channel. Dashed, because a solid arrow reads as "the browser did
    this" once you have eight of them on screen, and amber because it is the
@@ -394,9 +398,10 @@ pre.tokenraw { word-break: break-all; white-space: pre-wrap; font-size: 14.5px; 
 .m.backchannel::before {
   background: none;
   border-top: 3px dashed var(--warn);
-  height: 0;
+  top: 53.5px; height: 0;
 }
 .m.backchannel::after { border-left-color: var(--warn); }
+.m.backchannel.rev::after { border-left-color: transparent; border-right-color: var(--warn); }
 .m.backchannel .lbl {
   color: var(--warn); font-weight: 700;
   background: var(--warn-bg); border: 1px solid var(--warn-line);

@@ -27,7 +27,12 @@
 
    fase2_extra is what PKCE adds to the /auth redirect (the challenge).
    credential is what phase 4 sends instead of a shared secret. Everything
-   else is the same line, so the eye lands on the difference. #}
+   else is the same line, so the eye lands on the difference.
+
+   A message that travels right to left carries `rev`, which is what flips its
+   arrowhead; three of the eight do (the two 302 redirects, which the server
+   sends back to the browser, and the token response, which Keycloak sends back
+   to the app). #}
 {% macro seqdiagram(title, client_id, fase2_extra, credential, trace=None) %}
 <div class="seqwrap">
   <div class="boxtitle">{{ title }}</div>
@@ -42,13 +47,13 @@
 
   <div class="seqbody">
     <div class="m f-2 t-3"><span class="lbl">GET /login</span></div>
-    <div class="m f-3 t-2"><span class="lbl">302 &rarr; /auth<br>state, nonce{% if fase2_extra %}<br>+ code_challenge{% endif %}</span></div>
+    <div class="m f-3 t-2 rev"><span class="lbl">302 &rarr; /auth<br>state, nonce{% if fase2_extra %} + code_challenge{% endif %}</span></div>
     <div class="m f-2 t-4"><span class="lbl">GET /auth</span></div>
     <div class="m f-1 t-2"><span class="lbl">credenciales</span></div>
-    <div class="m f-4 t-2"><span class="lbl">302 &rarr; /callback?code&state</span></div>
+    <div class="m f-4 t-2 rev"><span class="lbl">302 &rarr; /callback?code&state</span></div>
     <div class="m f-2 t-3"><span class="lbl">GET /callback?code&state</span></div>
     <div class="m f-3 t-4 backchannel"><span class="lbl">POST /token<br>{code, {{ credential }}}</span></div>
-    <div class="m f-4 t-3"><span class="lbl">{access_token, id_token}</span></div>
+    <div class="m f-4 t-3 rev"><span class="lbl">{access_token, id_token}</span></div>
   </div>
 
   <p class="seqnote"><span class="chip bc">back channel</span> {{ credential }} viaja de la app a
