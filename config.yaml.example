@@ -1,21 +1,34 @@
+# Copy to config.yaml for running WITHOUT docker compose.
+# With compose, config_compose.yaml is used instead and mounted at /app/config.yaml.
+#
+# Two Keycloak URLs on purpose:
+#   internal_url -> container to container (compose DNS name, invisible to the browser)
+#   public_url   -> browser to container (what goes into redirect_uri)
 keycloak:
-  url: "http://<keycloak-host>:8080/realms/<your-realm-name>"
+  internal_url: "http://<keycloak-host>:8080/realms/<realm>"
+  public_url: "http://<browser-reachable-host>:8080/realms/<realm>"
   client_id: "<client-id>"
   client_secret: "<client-secret>"
+  public_client_id: "<public-client-id>"
+  audience: "<api-audience>"
 
 flask:
   debug: true
   port: 9090
   host: "0.0.0.0"
+  # Read this from the environment in anything real. Never commit it.
   secret_key: null
-  base_url: "http://<app-host>:9090"
+  # The URL the BROWSER uses to reach this app; it becomes the redirect_uri.
+  base_url: "http://localhost:9090"
 
 oauth:
-  scope: "openid profile email"
+  # `openid` is the scope that makes this OIDC instead of plain OAuth2.
+  scope: "openid"
+  scope_without_openid: "roles basic-profile"
+  scope_extended: "openid demo-perfil"
 
 resource_server:
   debug: true
   port: 9091
   host: "0.0.0.0"
-  # This could be docker compose service if running with compose
-  url: "http://<resource_server_host>:9091"
+  url: "http://<resource-server-host>:9091"
