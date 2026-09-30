@@ -131,7 +131,7 @@ Haz login como `ana` y ve a `/station/jwt`.
    nombre detrás. La información de identidad viene en el `id_token`, y sin
    `openid` en el scope **ese token no existe**.
 
-**Extra — PKCE (opcional).** Entra por `/station/pkce` y compara la pata 4 con
+**Extra — PKCE (opcional).** Entra por `/station/pkce` y compara la fase 4 con
 la del login normal. En el cliente público no hay `client_secret`: hay un
 `code_verifier`. Explica qué impediría a un atacante que interceptase el `code`.
 
