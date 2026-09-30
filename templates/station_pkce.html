@@ -1,30 +1,41 @@
 {% extends "base.html" %}
 {% from "_macros.html" import jsonbox %}
-{% block title %}Estacion 5 - PKCE{% endblock %}
+{% block title %}Modulo 5 - PKCE{% endblock %}
 {% block content %}
-<h1>Estacion 5 (bonus) &middot; PKCE</h1>
+<h1>Modulo 5 (bonus) &middot; PKCE</h1>
 
-<p class="lead">Un <strong>cliente publico</strong> (una app movil, un SPA, <code>curl</code>) no puede guardar un secreto:
-todo lo que ejecuta esta en las manos del usuario. PKCE sustituye el secreto por una prueba de vida.</p>
+<p class="lead">PKCE es una prueba de que quien canjea el <code>code</code> es el mismo que
+empezo el flujo. La app se inventa un secreto de un solo uso: en la fase 2 publica su
+<strong>hash</strong>, y en la fase 4 demuestra que sabe el original. Robar el <code>code</code>
+deja de servir de nada.</p>
 
 <div class="twocol">
   <div class="box">
-    <div class="boxtitle">Cliente confidencial</div>
-    <p><code>{{ client_id }}</code></p>
-    <p>Guarda un secreto y lo envia en la fase 4. Si alguien intercepta el <code>code</code>, no puede canjearlo sin el secreto.</p>
+    <div class="boxtitle">Fase 2 &middot; code_challenge</div>
+    <p>Viaja a la vista de todos, en la barra de direcciones.</p>
+    <p>Es el <strong>SHA-256</strong> del secreto. De un hash no se vuelve atras, asi que verlo
+    no sirve para canjear nada.</p>
   </div>
   <div class="box">
-    <div class="boxtitle">Cliente publico</div>
-    <p><code>{{ public_client_id }}</code></p>
-    <p>Sin secreto estatico. En la fase 2 manda <code>code_challenge</code>, y en la fase 4 el <code>code_verifier</code>, que la propia app se genera y se guarda.</p>
+    <div class="boxtitle">Fase 4 &middot; code_verifier</div>
+    <p>No pasa por el navegador: va de la app a Keycloak por el back channel.</p>
+    <p>Es el secreto original, y <strong>caduca con el login</strong>: el siguiente usa otro.
+    Keycloak comprueba que su hash es el que le mandaste.</p>
   </div>
 </div>
+
+<p class="muted">Y esto no depende del tipo de cliente. Confidencial o publico contesta una sola
+pregunta: si puede guardar un secreto. OAuth 2.1 exige PKCE a <em>todos</em>, y su unica
+excepcion pide ser confidencial <em>y</em> implementar bien el <code>nonce</code> de OIDC, y aun
+asi seguiria siendo lo recomendado. Aqui se prueba con <code>{{ public_client_id }}</code> por una
+razon de clase: es el unico caso en el que no hay un <code>client_secret</code> tapando el
+mecanismo.</p>
 
 <p class="hint">Quien guarda el <code>code_verifier</code> depende de quien sea el cliente. Aqui la app web
 tiene servidor, asi que lo genera el servidor Flask. En una app movil o un SPA no hay
 sesion de servidor a la que agarrarse, y lo genera la propia app cliente, en el
 dispositivo. <strong>La propiedad de seguridad es la misma</strong>: un secreto por peticion
-que el atacante no puede deducir del <code>code</code> que le robó.</p>
+que el atacante no puede deducir del <code>code</code> que le robo.</p>
 
 <div class="btnrow">
   <a class="btn bonus" href="{{ url_for('login_pkce') }}">Login con PKCE</a>
@@ -41,9 +52,12 @@ que el atacante no puede deducir del <code>code</code> que le robó.</p>
 
 {% if trace.request %}
 {{ jsonbox("Fase 4: lo que se envio al token endpoint", trace.request) }}
-<p>Fíjate: <strong>no hay <code>client_secret</code></strong>. Hay <code>code_verifier</code>.</p>
+<p>Fijate en lo que <strong>no</strong> viaja: ningun <code>client_secret</code>. La unica
+credencial de esta peticion es el <code>code_verifier</code>. Un cliente confidencial que hoy
+hiciera PKCE mandaria <strong>las dos cosas</strong> aqui mismo, y por eso conviene no confundir
+los dos ejes.</p>
 {% endif %}
 {% endif %}
 
-<p class="hint">Y si el <code>code</code> se filtra, el atacante tendria que inventar un <code>code_verifier</code> tal que su SHA-256 dé el <code>code_challenge</code>. Eso es inviable.</p>
+<p class="hint">Y si el <code>code</code> se filtra, el atacante tendria que inventar un <code>code_verifier</code> cuya huella SHA-256 coincida con el <code>code_challenge</code>. Eso es inviable.</p>
 {% endblock %}

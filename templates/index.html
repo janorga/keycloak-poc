@@ -4,7 +4,7 @@
 <h1>Laboratorio OAuth2 + OIDC</h1>
 
 <div class="creds">
-  <h2>Credenciales (estacion 0)</h2>
+  <h2>Credenciales (modulo 0)</h2>
   <table>
     <tr><th>Usuario</th><th>Contrasena</th><th>Roles de realm</th><th>Resultado esperado</th></tr>
     <tr><td><code>ana</code></td><td><code>ana</code></td><td>admin, user</td><td><code>/api/user-only</code> 200 &middot; <code>/api/admin-only</code> 200</td></tr>
@@ -32,10 +32,10 @@
   <a class="btn" href="{{ url_for('login') }}">Login OIDC normal</a>
   <a class="btn" href="{{ url_for('login_scope_extended') }}">Login con scope extra</a>
   <a class="btn warn" href="{{ url_for('login_no_openid') }}">Login SIN <code>openid</code></a>
-  <a class="btn bonus" href="{{ url_for('login_pkce') }}">Login PKCE (publico)</a>
+  <a class="btn bonus" href="{{ url_for('login_pkce') }}">Login PKCE</a>
 </div>
 
-<p class="hint">Orden recomendado: login normal &rarr; estacion 1 &rarr; estacion 2 &rarr; login con scope extra &rarr; volver a la estacion 2 para ver el diff &rarr; login sin openid &rarr; estacion 3 &rarr; login como luis &rarr; estacion 4.</p>
+<p class="hint">Orden recomendado: login normal &rarr; modulo 1 &rarr; modulo 2 &rarr; login con scope extra &rarr; volver al modulo 2 para ver el diff &rarr; login sin openid &rarr; modulo 3 &rarr; login como luis &rarr; modulo 4.</p>
 
 {% if traces %}
 <h2>Trazas de tu sesion</h2>

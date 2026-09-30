@@ -71,7 +71,7 @@ fi
 #
 #    envsubst con '${AUTHLAB_HOST}' entrecomillado sustituye SOLO esa variable.
 #    Sin las comillas, envsubst vaciaria tambien el ${client_id} de Keycloak que
-#    hay en el mapper de roles del realm, y la estacion 4 (roles) fallaria en
+#    hay en el mapper de roles del realm, y el modulo 4 (roles) fallaria en
 #    silencio. No borrar las comillas.
 # ---------------------------------------------------------------------------
 echo "==> Resolviendo la configuracion"
@@ -82,11 +82,11 @@ envsubst '${AUTHLAB_HOST}' < config_compose.yaml.template > "$GENERATED/config.y
 envsubst '${AUTHLAB_HOST}' < realm/lab-realm.json.template > "$GENERATED/realm/lab-realm.json"
 
 # Si el mapper de roles se hubiera vaciado, el realm importaria sin roles y la
-# estacion 4 daria 403 a todos. Comprobacion explicita, barata y con nombre.
+# modulo 4 daria 403 a todos. Comprobacion explicita, barata y con nombre.
 if grep -q '"claim.name": "resource_access\."' "$GENERATED/realm/lab-realm.json"; then
   die "El mapper de roles quedo vacio al resolver el realm (resource_access.).
        Las comillas de envsubst se han perdido. No continúes: el realm
-       importaria sin roles y la estacion 4 daria 403 a todos los usuarios."
+       importaria sin roles y el modulo 4 daria 403 a todos los usuarios."
 fi
 
 # Comprobacion de que el placeholder se sustituyo de verdad y no se coló sin
@@ -224,7 +224,7 @@ cat <<BANNER
 
   --------------------------------------------------------------
     URLs
-      App (estacion 0)      http://$AUTHLAB_HOST:9090
+      App (modulo 0)      http://$AUTHLAB_HOST:9090
       Consola Keycloak      http://$AUTHLAB_HOST:8080/admin   (admin / admin)
       Resource server       http://resource-server:9091   (solo interno)
 

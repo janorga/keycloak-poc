@@ -1,8 +1,8 @@
 {% extends "base.html" %}
 {% from "_macros.html" import jsonbox, tokenbox %}
-{% block title %}Estacion 2 - Anatomia del JWT{% endblock %}
+{% block title %}Modulo 2 - Anatomia del JWT{% endblock %}
 {% block content %}
-<h1>Estacion 2 &middot; Anatomia del JWT</h1>
+<h1>Modulo 2 &middot; Anatomia del JWT</h1>
 
 <p class="lead">Un JWT son tres partes separadas por puntos: <code>HEADER . PAYLOAD . SIGNATURE</code>. Las dos primeras son
 <strong>base64url, no cifrado</strong>. Cualquiera con el token puede leerlas.</p>
@@ -40,7 +40,7 @@
   <tr><td><code>iat</code></td><td>{{ token.claims.iat }}</td><td>Emitido</td></tr>
   <tr><td><code>azp</code></td><td>{{ token.claims.azp }}</td><td>El cliente que pidio el token</td></tr>
   <tr><td><code>scope</code></td><td>{{ token.claims.scope }}</td><td>Lo que se pidio</td></tr>
-  <tr><td><code>realm_access.roles</code></td><td>{{ token.claims.realm_access.roles | join(', ') if token.claims.realm_access else '-' }}</td><td><strong>El claim que decide la estacion 4</strong></td></tr>
+  <tr><td><code>realm_access.roles</code></td><td>{{ token.claims.realm_access.roles | join(', ') if token.claims.realm_access else '-' }}</td><td><strong>El claim que decide el modulo 4</strong></td></tr>
   {% if token.claims.demo_perfil %}
   <tr class="hl"><td><code>demo_perfil</code></td><td>{{ token.claims.demo_perfil }}</td><td>Solo aparece si pediste el scope <code>demo-perfil</code></td></tr>
   {% endif %}

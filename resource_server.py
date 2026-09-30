@@ -234,7 +234,7 @@ def user_only(claims, roles):
             {
                 "msg": (
                     "Acceso permitido porque tu token incluye el rol 'user', "
-                    "que es el rol de realm exigido por esta estacion."
+                    "que es el rol de realm exigido por este modulo."
                 ),
                 "endpoint": "/api/user-only",
                 "required_role": "user",
@@ -259,7 +259,7 @@ def admin_only(claims, roles):
             {
                 "msg": (
                     "Acceso permitido porque tu token incluye el rol 'admin', "
-                    "que es el rol de realm exigido por esta estacion."
+                    "que es el rol de realm exigido por este modulo."
                 ),
                 "endpoint": "/api/admin-only",
                 "required_role": "admin",

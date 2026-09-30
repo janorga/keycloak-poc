@@ -1,8 +1,8 @@
 {% extends "base.html" %}
 {% from "_macros.html" import jsonbox, httpstatus, tokenbox %}
-{% block title %}Estacion 3 - OAuth2 no es login{% endblock %}
+{% block title %}Modulo 3 - OAuth2 no es login{% endblock %}
 {% block content %}
-<h1>Estacion 3 &middot; OAuth2 no es login</h1>
+<h1>Modulo 3 &middot; OAuth2 no es login</h1>
 
 <p class="lead">OAuth2 dice <em>"esta aplicacion puede leer tus datos"</em>. OIDC dice <em>"esta aplicacion sabe quien eres"</em>.
 La unica diferencia en la peticion es la palabra <code>openid</code>.</p>
@@ -17,7 +17,7 @@ La unica diferencia en la peticion es la palabra <code>openid</code>.</p>
 {% else %}
 <div class="warnbox">
   <p><strong>No hay <code>id_token</code> en esta sesion.</strong> Y no es un fallo:
-  esta estacion esta precisamente para eso. Pide <code>openid</code> arriba y
+  este modulo esta precisamente para eso. Pide <code>openid</code> arriba y
   vuelve: aparecera aqui, al lado del access token.</p>
 </div>
 {% endif %}

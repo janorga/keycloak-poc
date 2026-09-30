@@ -132,14 +132,16 @@ Haz login como `ana` y ve a `/station/jwt`.
    `openid` en el scope **ese token no existe**.
 
 **Extra — PKCE (opcional).** Entra por `/station/pkce` y compara la fase 4 con
-la del login normal. En el cliente público no hay `client_secret`: hay un
-`code_verifier`. Explica qué impediría a un atacante que interceptase el `code`.
+la del login normal. Este cliente no tiene `client_secret`, así que su única
+barrera es el `code_verifier`. Explica qué impediría a un atacante que
+interceptase el `code`. Y cuidado con la conclusión fácil: PKCE no es cosa de
+clientes públicos, OAuth 2.1 lo exige a todos.
 
 <details><summary>Ver respuesta</summary>
 
 El atacante que se quede con el `code` no puede canjearlo: el servidor solo
 acepta un `code_verifier` cuyo SHA-256 sea el `code_challenge` que él envió.
-Encontrar un valor que dé ese hash es computationally inviable. Es la misma
+Encontrar un valor que dé ese hash es computacionalmente inviable. Es la misma
 idea que un hash de contraseña, pero aplicada a una petición en vuelo.
 
 </details>

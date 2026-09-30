@@ -1,14 +1,14 @@
 {% extends "base.html" %}
 {% from "_macros.html" import jsonbox, urlrow, seqdiagram %}
-{% block title %}Estacion 1 - El flujo en cuatro fases{% endblock %}
+{% block title %}Modulo 1 - El flujo en cuatro fases{% endblock %}
 {% block content %}
-<h1>Estacion 1 &middot; El flujo en cuatro fases</h1>
+<h1>Modulo 1 &middot; El flujo en cuatro fases</h1>
 
-<p class="lead">El navegador nunca habla con la red interna. De los cuatro saltos, tres pasan por el navegador y el cuarto lo hacen dos procesos entre sí.</p>
+<p class="lead">El navegador nunca habla con la red interna. De los cuatro saltos, tres pasan por el navegador y el cuarto lo hacen dos procesos entre si.</p>
 
 {% if not trace %}
 <div class="warnbox">
-  <p><strong>Aun no has hecho login.</strong> Esta estacion necesita una traza real.</p>
+  <p><strong>Aun no has hecho login.</strong> Este modulo necesita una traza real.</p>
   <p><a class="btn" href="{{ url_for('login') }}">Hacer login ahora</a></p>
 </div>
 {% else %}
@@ -20,20 +20,43 @@
   <div class="leg"><span class="legnum">4</span><div>La app <strong>cambia el code por tokens</strong> en el <em>back channel</em>: servidor a servidor, sin navegador de por medio.<br><code class="url">{{ token_endpoint }}</code></div></div>
 </div>
 
-<h2>Los dos clientes, el mismo esqueleto</h2>
-<p class="lead">Mismo flujo, mismos cuatro saltos, mismos participantes. Lo unico que cambia es
-<strong>que se manda en la fase 4</strong>. Mira las dos flechas marcadas.</p>
+<h2>Que prueba cada cliente en la fase 4</h2>
+<p class="lead">Mismo flujo, mismos cuatro saltos, mismos participantes. Lo unico que cambia
+entre estos dos diagramas es <strong>que credencial viaja en la fase 4</strong>. El de la
+izquierda lleva PKCE apagado a proposito, para que se vea que falta: hoy no se desplegaria asi.
+El <code>client_id</code> de cada uno esta en su cabecera.</p>
 
 <div class="twocol seqcol">
-  {{ seqdiagram("Cliente confidencial", client_id, none, "client_secret", traces.get('oidc')) }}
-  {{ seqdiagram("Cliente publico (PKCE)", public_client_id, "si", "code_verifier", traces.get('pkce')) }}
+  {{ seqdiagram("Sin PKCE", client_id, none, "client_secret", traces.get('oidc')) }}
+  {{ seqdiagram("Con PKCE", public_client_id, "si", "code_verifier", traces.get('pkce')) }}
 </div>
 
-<p class="muted">Lo que hace PKCE no es esconder el secreto en otro sitio: es
-<strong>sustituir un secreto estatico y compartido por uno por peticion que la propia app
-genera</strong>. Por eso un cliente que no puede guardar nada (una app movil, un SPA)
-puede hablar con Keycloak sin <code>client_secret</code>. Lo ves entero en la
-<a href="{{ url_for('station_pkce') }}">estacion 5</a>.</p>
+<table>
+  <tr>
+    <th>Credencial en la fase 4</th>
+    <th>Que prueba</th>
+    <th>Quien la puede usar</th>
+  </tr>
+  <tr>
+    <td><code>client_secret</code></td>
+    <td>que la app es el cliente registrado con ese <code>client_id</code></td>
+    <td>solo quien puede guardar un secreto</td>
+  </tr>
+  <tr>
+    <td><code>code_verifier</code></td>
+    <td>que quien canjea el <code>code</code> es el mismo que empezo el flujo</td>
+    <td><strong>todos</strong></td>
+  </tr>
+</table>
+
+<p class="muted">Son dos preguntas distintas y conviene no mezclarlas. El <strong>tipo de
+cliente</strong> contesta una sola: si puede autenticarse con credenciales propias, es decir si
+tiene <code>client_secret</code>. <strong>PKCE no depende de eso.</strong> OAuth 2.1 exige
+<code>code_challenge</code> y <code>code_verifier</code> para <em>todos</em> los clientes, y la
+unica excepcion pide dos cosas a la vez (ser confidencial <em>y</em> implementar bien el
+<code>nonce</code> de OIDC), y aun asi seguiria siendo lo recomendado. Un cliente confidencial
+con PKCE manda las dos credenciales en la misma peticion: no es una cosa <em>o</em> la otra. Lo
+ves entero en el <a href="{{ url_for('station_pkce') }}">modulo 5</a>.</p>
 
 <h2>Las dos URLs de Keycloak, lado a lado</h2>
 {{ urlrow("Lo que usa la app (internal)", internal_auth, "El contenedor main-app resuelve el nombre 'keycloak' en la red de compose.") }}

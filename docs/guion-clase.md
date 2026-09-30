@@ -26,7 +26,7 @@ dice por pantalla.
 
 ---
 
-## Min 0–5 · Estación 0 — Arranque
+## Min 0–5 · Módulo 0 — Arranque
 
 `http://localhost:9090`
 
@@ -52,7 +52,7 @@ Señala las dos URLs del centro:
 
 ---
 
-## Min 5–15 · Estación 1 — El flujo en cuatro fases
+## Min 5–15 · Módulo 1 — El flujo en cuatro fases
 
 `/station/flow` — **con una sesión ya iniciada** (haz login como `ana` antes).
 
@@ -63,7 +63,7 @@ Las cuatro fases, con las URLs literales de tu propio login:
 3. El usuario se autentica. Keycloak redirige con un **authorization code**.
 4. La app cambia el code por tokens en el **back channel**.
 
-### El diagrama: los dos clientes lado a lado
+### El diagrama: el mismo flujo, sin PKCE y con PKCE
 
 Más abajo hay **dos diagramas de secuencia, en paralelo**, con el mismo esqueleto.
 Úsalo así:
@@ -75,9 +75,29 @@ Más abajo hay **dos diagramas de secuencia, en paralelo**, con el mismo esquele
 4. Ahora la diferencia: en el de la izquierda pone `client_secret`; en el de la
    derecha, `code_verifier`.
 
-> "Mismo flujo, mismos saltos, mismos participantes. Lo único que ha cambiado es
-> una credencial. Eso, y nada más, es lo que aporta PKCE: cambiar un secreto
-> estático y compartido por uno que la app genera en cada login."
+El eje del ejercicio es **sin PKCE contra con PKCE**, y nada más. El
+`client_id` de cada diagrama está en su cabecera si alguien pregunta de qué
+cliente es cada uno. Cuida no montar el marco contrario, que es el error de casi
+todas las explicaciones:
+
+> "No os dejéis confundir por el tipo de cliente. Confidencial o público
+> contesta una sola pregunta: si puede guardar un secreto. Y **PKCE no depende de
+> eso**: OAuth 2.1 lo exige a todos los clientes. La única excepción pide ser
+> confidencial *y* implementar bien el `nonce` de OIDC, y aun así seguiría siendo
+> lo recomendado."
+
+Y el motivo de fondo, que es el punto que se suele perder:
+
+> "PKCE nació para las apps nativas, pero protege de algo que le puede pasar a
+> cualquiera: que te inyecten en el `/callback` un `code` que no es tuyo. Por eso
+> ya no es un extra de los clientes públicos, es la barrera que va en todos. No es
+> una alternativa al secreto: es otra barrera, y en la fase 4 van las dos."
+
+El diagrama de la izquierda lleva PKCE **apagado a propósito**, y la página lo
+dice: no es una configuración que hoy se desplegaría, es el "antes" que hace
+visible qué añade el `code_verifier`. Si alguien pregunta si un cliente
+confidencial puede hacer PKCE, la respuesta es que no solo puede: es lo que se
+espera hoy, y entonces manda las dos credenciales en la misma petición.
 
 La flecha de la derecha es **discontinua** a propósito. Señálalo:
 
@@ -100,7 +120,7 @@ Insiste además en tres cosas de la lista de fases:
 
 ---
 
-## Min 15–25 · Estación 2 — Anatomía del JWT
+## Min 15–25 · Módulo 2 — Anatomía del JWT
 
 `/station/jwt`
 
@@ -138,7 +158,7 @@ Tienes también el enlace **"Abrir en jwt.io"**, que ya lleva el token dentro.
 Úsalo si la clase va con prisas; si no, mejor el botón de copiar, porque el
 alumno ve el gesto.
 
-### El diff (parte más rentable de la estación)
+### El diff (parte más rentable del módulo)
 
 Ojo con la secuencia: **no basta con pulsar login otra vez.** Si la sesión de
 Keycloak sigue abierta, el segundo login te devuelve al instante sin pedirte
@@ -165,7 +185,7 @@ rompe esa continuidad.
 
 ---
 
-## Min 25–35 · Estación 3 — OAuth2 no es login
+## Min 25–35 · Módulo 3 — OAuth2 no es login
 
 **Antes:** haz logout. Luego pulsa **"Login SIN openid"** como `ana`. Vuelve a
 `/station/not-login`.
@@ -181,7 +201,7 @@ Arriba de la pantalla hay dos bloques plegables: **access_token** e **id_token**
 Esta es la parte visual de la tabla. Hazlo así:
 
 1. Estás **sin** `openid`: solo se ve el `access_token`, y debajo un aviso que
-   explica que la ausencia del `id_token` **es el objetivo de la estación**.
+   explica que la ausencia del `id_token` **es el objetivo del módulo**.
 2. Di: "este token de aquí es todo lo que OAuth2 puro te da".
 3. Pide login con `openid` y vuelve. Ahora aparecen **los dos**, uno al lado del
    otro.
@@ -201,7 +221,7 @@ oportunidad gratis para hablar de `401` (no sé quién eres) frente a
 
 ---
 
-## Min 35–45 · Estación 4 — AuthN ≠ AuthZ
+## Min 35–45 · Módulo 4 — AuthN ≠ AuthZ
 
 Sesión de `ana` → `/station/roles`.
 
@@ -231,7 +251,7 @@ Señala el JSON del 403: `required_role: admin`, `roles: [user]`.
 > "El resource server no ha hardcodeado nombres de usuario. No tiene ni idea de
 > que existe alguien llamado Luis. Solo lee un array de roles."
 
-### El refresh (si sobra tiempo dentro de esta estación)
+### El refresh (si sobra tiempo dentro de este módulo)
 
 El access token dura **60 segundos a propósito**. Espera y vuelve a pulsar.
 
@@ -252,11 +272,12 @@ Resumen en tres frases:
 
 ### Bonus (elige uno según el tiempo)
 
-- **PKCE** (`/station/pkce`): login con el cliente público. Un móvil no puede
-  guardar un secreto, así que en vez de un secreto se manda una prueba: el
-  navegador genera un `code_verifier`, envía su SHA-256 (`code_challenge`) y
+- **PKCE** (`/station/pkce`): el módulo 1 explica qué es; aquí se ve funcionar.
+  Antes de canjear nada, la app genera un `code_verifier` (aquí el servidor
+  Flask, no el navegador), envía su SHA-256 (`code_challenge`) en la fase 2 y
   luego demuestra que sabe el original. Si alguien roba el `code`, no puede
-  canjearlo: le faltan 256 bits.
+  canjearlo: le faltan 256 bits. Y va en **todos** los clientes, públicos y
+  confidenciales: OAuth 2.1 lo exige.
 - **Mapper en vivo**: en la consola de Keycloak (en otra pestaña), abre
   *Clients → web-confidential → Protocol mappers*, edita el de audience, y vuelve
   a hacer login. El claim `aud` ha cambiado sin tocar una línea de código.
@@ -279,5 +300,5 @@ Si algo se rompe en directo:
 
 - `./reset.sh -y` devuelve todo al estado inicial en ~40 s.
 - Si la **consola de administración** resultara inservible, el laboratorio no
-  depende de ella: ninguna estación exige hacer clic dentro.
+  depende de ella: ningún módulo exige hacer clic dentro.
 - Los cuatro valores que importan están en `config_compose.yaml.template`, arriba del todo.
