@@ -69,6 +69,30 @@ BASE_URL = (flask_config.get("base_url") or "http://localhost:9090").rstrip("/")
 # it, which is fine: the class starts from a clean stack anyway.
 _claim_history: dict[str, list] = {}
 
+# --- Traces, also kept OUTSIDE the session cookie, and for the same reason ---
+#
+# These used to live in the session, which hid two bugs behind 200s:
+#
+#   1. record_trace ASSIGNED `traces[variant] = trace`, so the second write for a
+#      variant destroyed the first. One login produces two traces under one
+#      variant name: build_authorize_url records the /auth request (client_id,
+#      redirect_uri, scope, state, nonce, code_challenge, authorize_url) and
+#      exchange_code then records the /token exchange under the same key, and
+#      that second trace has none of those keys. Station 1 rendered `Undefined`
+#      in five of the six parameters it exists to display, with an empty
+#      authorize URL; station 5's PKCE section never rendered at all, because its
+#      guard reads trace.code_challenge, which the overwrite had already thrown
+#      away. Nothing failed. Every page answered 200.
+#   2. So record_trace now MERGES. But a merged trace carries both halves, about
+#      1.5 KB of JSON, and two variants already pushed the session cookie to
+#      2966 of 4093 bytes. Four variants would have overflowed it, and the
+#      browser drops an oversized cookie silently, so the session would vanish
+#      mid-class. That is the decoded-token bug again, one layer up.
+#
+# Hence the same treatment as the claim history: a per-browser id in the session,
+# the payload here. A restart clears it, which is fine for the same reason.
+_trace_store: dict[str, dict] = {}
+
 # --- Keycloak configuration ---
 # Two URLs, and the difference is the whole point of station 1.
 #   INTERNAL_URL is container -> container. The compose DNS name `keycloak` exists
@@ -143,9 +167,30 @@ CALLBACK_ENDPOINTS = {
     "pkce": "callback_pkce",
 }
 
-# Used to keep the session cookie bounded: traces are stored per variant, so
-# there must be a closed set of names to filter against.
+# The closed set of trace names. It used to bound the session cookie; it now
+# bounds the server-side store, which matters just as much: one classroom keeps
+# logging in variants, and an open-ended dict would grow for the whole session.
 KNOWN_VARIANTS = frozenset(CALLBACK_ENDPOINTS) | {"refresh"}
+
+
+def client_for_variant(variant):
+    """The (client_id, is_public) pair that a variant authenticates as.
+
+    One login belongs to exactly one client, and EVERY token request has to name
+    that same client: the authorization_code exchange, and the refresh grant too.
+    Keycloak enforces it both ways. Naming the confidential client for a token
+    the public one issued fails with "invalid_grant / Token client and authorized
+    client don't match"; a public client has no secret to send at all.
+
+    This lives in one place because getting it wrong is silent. do_refresh used
+    to hardcode the confidential client, so every session whose last login was
+    PKCE lost its tokens sixty seconds later, the status bar fell back to "sin
+    sesion", and the student was told to log in again after a login that had
+    worked. Every response along the way was a 200.
+    """
+    if variant == "pkce":
+        return PUBLIC_CLIENT_ID, True
+    return CLIENT_ID, False
 
 
 def public_url_for(endpoint, **values):
@@ -282,12 +327,17 @@ def do_refresh(reason):
         logger.warning("No refresh token in session, cannot refresh")
         return False
 
+    # The grant has to name the client that actually issued this refresh token,
+    # not a fixed one. See client_for_variant.
+    client_id, is_public = client_for_variant(session.get("variant", "oidc"))
+
     payload = {
         "grant_type": "refresh_token",
-        "client_id": CLIENT_ID,
-        "client_secret": CLIENT_SECRET,
+        "client_id": client_id,
         "refresh_token": refresh_token,
     }
+    if not is_public:
+        payload["client_secret"] = CLIENT_SECRET
 
     response = requests.post(TOKEN_ENDPOINT, data=payload, timeout=10)
     body = response.json()
@@ -296,23 +346,21 @@ def do_refresh(reason):
         "reason": reason,
         "at": int(time.time()),
         "request": {k: v for k, v in payload.items() if k != "client_secret"},
-        "client_secret_sent": True,
+        "client_secret_sent": not is_public,
         "response_status": response.status_code,
         "response": summarize_token_response(body),
     }
 
     if response.status_code != 200:
         logger.warning("Refresh failed: %s", body)
-        session["traces"] = dict(session.get("traces") or {})
-        session["traces"]["refresh"] = trace
+        record_trace("refresh", trace)
         session.pop("access_token", None)
         session.pop("refresh_token", None)
         return False
 
     store_tokens(body, session.get("variant", "oidc"))
     session["refresh_count"] = session.get("refresh_count", 0) + 1
-    session["traces"] = dict(session.get("traces") or {})
-    session["traces"]["refresh"] = trace
+    record_trace("refresh", trace)
     logger.info("Access token refreshed transparently (%s), total %s", reason, session["refresh_count"])
     return True
 
@@ -353,12 +401,23 @@ def _refresh_before_render():
     ensure_fresh_access_token()
 
 
+def get_traces() -> dict:
+    """The per-variant traces for this browser. Every station reads them."""
+    return dict(_trace_store.get(_history_id()) or {})
+
+
 def record_trace(variant, trace):
-    # Bounded by construction: one entry per known variant, so the session cookie
-    # cannot grow without limit across repeated logins in the same browser.
-    traces = dict(session.get("traces") or {})
-    traces[variant] = trace
-    session["traces"] = {k: v for k, v in traces.items() if k in KNOWN_VARIANTS}
+    """Records one half of a login. MERGES, never replaces.
+
+    The /auth request and the /token exchange are two halves of the same login,
+    recorded by two different functions under one variant name, and the stations
+    need both at once: station 1 shows the authorize parameters AND the token
+    response, and station 5 gates its whole section on the code_challenge that
+    only the first half ever recorded.
+    """
+    traces = get_traces()
+    traces[variant] = {**(traces.get(variant) or {}), **trace}
+    _trace_store[_history_id()] = {k: v for k, v in traces.items() if k in KNOWN_VARIANTS}
 
 
 def token_state():
@@ -432,8 +491,7 @@ def exchange_code(code, variant, redirect_uri):
     # The PKCE variant authenticated as the PUBLIC client, so the token request
     # has to name that same client. Sending the confidential one here fails with
     # "invalid client credentials".
-    is_public = variant == "pkce"
-    client_id = PUBLIC_CLIENT_ID if is_public else CLIENT_ID
+    client_id, is_public = client_for_variant(variant)
 
     payload = {
         "grant_type": "authorization_code",
@@ -574,7 +632,7 @@ def index():
         client_id=CLIENT_ID,
         public_client_id=PUBLIC_CLIENT_ID,
         audience=AUDIENCE,
-        traces=session.get("traces") or {},
+        traces=get_traces(),
     )
 
 
@@ -631,7 +689,13 @@ def station_flow():
     return render_template(
         "station_flow.html",
         token=token_state(),
-        trace=(session.get("traces") or {}).get(session.get("variant", "oidc")),
+        trace=get_traces().get(session.get("variant", "oidc")),
+        # Both variants, not just the current one: the side-by-side sequence
+        # diagrams label their arrows with the real values of each login, so the
+        # confidential half reads your OIDC trace and the PKCE half yours.
+        traces=get_traces(),
+        client_id=CLIENT_ID,
+        public_client_id=PUBLIC_CLIENT_ID,
         internal_auth=AUTH_ENDPOINT_INTERNAL,
         public_auth=AUTH_ENDPOINT,
         token_endpoint=TOKEN_ENDPOINT,
@@ -670,7 +734,7 @@ def station_not_login():
     return render_template(
         "station_not_login.html",
         token=token_state(),
-        trace=(session.get("traces") or {}).get("no-openid"),
+        trace=get_traces().get("no-openid"),
         userinfo=userinfo,
         scope_without_openid=SCOPE_WITHOUT_OPENID,
         userinfo_endpoint=USERINFO_ENDPOINT,
@@ -705,7 +769,7 @@ def station_roles():
         "station_roles.html",
         token=token_state(),
         results=results,
-        refresh_trace=(session.get("traces") or {}).get("refresh"),
+        refresh_trace=get_traces().get("refresh"),
     )
 
 
@@ -715,7 +779,7 @@ def station_pkce():
     return render_template(
         "station_pkce.html",
         token=token_state(),
-        trace=(session.get("traces") or {}).get("pkce"),
+        trace=get_traces().get("pkce"),
         public_client_id=PUBLIC_CLIENT_ID,
         client_id=CLIENT_ID,
     )
@@ -731,7 +795,7 @@ def refresh():
     return render_template(
         "station_refresh.html",
         token=token_state(),
-        trace=(session.get("traces") or {}).get("refresh"),
+        trace=get_traces().get("refresh"),
         ok=ok,
     )
 
