@@ -1,0 +1,86 @@
+{% extends "base.html" %}
+{% from "_macros.html" import jsonbox, tokenbox %}
+{% block title %}Estacion 2 - Anatomia del JWT{% endblock %}
+{% block content %}
+<h1>Estacion 2 &middot; Anatomia del JWT</h1>
+
+<p class="lead">Un JWT son tres partes separadas por puntos: <code>HEADER . PAYLOAD . SIGNATURE</code>. Las dos primeras son
+<strong>base64url, no cifrado</strong>. Cualquiera con el token puede leerlas.</p>
+
+{{ tokenbox('El access_token entero', token.access_token,
+            'El mismo token que acabas de recibir. Copialo y pegalo en jwt.io para verlo
+             fuera de esta pagina, o cambialo a mano y mira como la firma deja de cuadrar.') }}
+
+{% if not token.logged_in %}
+<div class="warnbox">
+  <p><strong>Sin sesion.</strong> Haz login para ver los claims.</p>
+  <p><a class="btn" href="{{ url_for('login') }}">Login OIDC</a></p>
+</div>
+{% else %}
+
+{% set parts = token.access_token.split('.') %}
+<h2>Las tres partes</h2>
+<div class="twocol">
+  {{ jsonbox("1. Header", parts[0] | b64decode | fromjson) }}
+  {{ jsonbox("2. Payload (los claims)", token.claims) }}
+  <div class="box">
+    <div class="boxtitle">3. Signature</div>
+    <pre>{{ parts[2][:120] }}...</pre>
+    <p class="muted">La firma es lo que impide editar el payload. Verificarla exige la clave publica de Keycloak (JWKS). Esta pagina <strong>no</strong> la verifica: solo mira.</p>
+  </div>
+</div>
+
+<h2>Tabla de claims</h2>
+<table class="claims">
+  <tr><th>Claim</th><th>Valor ahora</th><th>Que significa</th></tr>
+  <tr><td><code>iss</code></td><td>{{ token.claims.iss }}</td><td>Quien emitio el token</td></tr>
+  <tr><td><code>aud</code></td><td>{{ token.claims.aud | join(', ') if token.claims.aud is not string else token.claims.aud }}</td><td>Para que API es. Lo escribe el audience mapper hacia <code>api-resource</code></td></tr>
+  <tr><td><code>sub</code></td><td>{{ token.claims.sub }}</td><td>Identificador del usuario</td></tr>
+  <tr><td><code>exp</code></td><td>{{ token.claims.exp }}</td><td>Caduca. {{ token.expires_in }} s por delante</td></tr>
+  <tr><td><code>iat</code></td><td>{{ token.claims.iat }}</td><td>Emitido</td></tr>
+  <tr><td><code>azp</code></td><td>{{ token.claims.azp }}</td><td>El cliente que pidio el token</td></tr>
+  <tr><td><code>scope</code></td><td>{{ token.claims.scope }}</td><td>Lo que se pidio</td></tr>
+  <tr><td><code>realm_access.roles</code></td><td>{{ token.claims.realm_access.roles | join(', ') if token.claims.realm_access else '-' }}</td><td><strong>El claim que decide la estacion 4</strong></td></tr>
+  {% if token.claims.demo_perfil %}
+  <tr class="hl"><td><code>demo_perfil</code></td><td>{{ token.claims.demo_perfil }}</td><td>Solo aparece si pediste el scope <code>demo-perfil</code></td></tr>
+  {% endif %}
+</table>
+
+<h2>Diff contra el login anterior</h2>
+{% if diff %}
+<p>Comparando <strong>{{ diff.previous_variant }}</strong> (anterior) contra <strong>{{ diff.current_variant }}</strong> (actual).</p>
+<div class="threecol">
+  <div class="box">
+    <div class="boxtitle">Anadidos ({{ diff.added | length }})</div>
+    {% if diff.added %}<pre>{{ diff.added | pretty }}</pre>{% else %}<p class="muted">ninguno</p>{% endif %}
+  </div>
+  <div class="box">
+    <div class="boxtitle">Quitados ({{ diff.removed | length }})</div>
+    {% if diff.removed %}<pre>{{ diff.removed | pretty }}</pre>{% else %}<p class="muted">ninguno</p>{% endif %}
+  </div>
+  <div class="box">
+    <div class="boxtitle">Cambiados ({{ diff.changed | length }})</div>
+    {% if diff.changed %}<pre>{{ diff.changed | pretty }}</pre>{% else %}<p class="muted">ninguno</p>{% endif %}
+  </div>
+</div>
+<p class="lead">Pedir <em>mas scope</em> es pedir <em>mas claims</em>. El token crece, no la app.</p>
+{% else %}
+<p class="muted">Hace falta un segundo login para poder diffear. El truco: hay que
+cerrar la sesion local antes, porque si no Keycloak reconocera la sesion SSO y te
+devolvera al instante sin dejarte escribir nada.</p>
+<p>
+  {% if token.logged_in %}
+  <a class="btn" href="{{ url_for('logout_local') }}">1. Cerrar sesion local (NO cierres la de Keycloak)</a>
+  {% else %}
+  <a class="btn" href="{{ url_for('login') }}">1. Login con scope: {{ scope }}</a>
+  {% endif %}
+  <a class="btn" href="{{ url_for('login_scope_extended') }}">2. Login con scope: {{ scope_extended }}</a>
+</p>
+<p class="muted"><strong>Importante:</strong> el paso 1 no cierra tu sesion en Keycloak.
+Por eso es util aqui y no vale como logout de verdad. Para cerrar la sesion de
+Keycloak de verdad, usa <a href="{{ url_for('logout') }}">logout completo</a>, que
+ademas te hara teclear las credenciales otra vez.</p>
+{% endif %}
+
+{% endif %}
+{% endblock %}

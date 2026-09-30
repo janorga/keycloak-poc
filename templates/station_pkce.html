@@ -1,0 +1,43 @@
+{% extends "base.html" %}
+{% from "_macros.html" import jsonbox %}
+{% block title %}Estacion 5 - PKCE{% endblock %}
+{% block content %}
+<h1>Estacion 5 (bonus) &middot; PKCE</h1>
+
+<p class="lead">Un <strong>cliente publico</strong> (una app movil, un SPA, <code>curl</code>) no puede guardar un secreto:
+todo lo que ejecuta esta en las manos del usuario. PKCE sustituye el secreto por una prueba de vida.</p>
+
+<div class="twocol">
+  <div class="box">
+    <div class="boxtitle">Cliente confidencial</div>
+    <p><code>{{ client_id }}</code></p>
+    <p>Guarda un secreto y lo envia en la pata 4. Si alguien intercepta el <code>code</code>, no puede canjearlo sin el secreto.</p>
+  </div>
+  <div class="box">
+    <div class="boxtitle">Cliente publico</div>
+    <p><code>{{ public_client_id }}</code></p>
+    <p>Sin secreto. En la pata 2 manda <code>code_challenge</code>, y en la pata 4 el <code>code_verifier</code> que solo el navegador sabe.</p>
+  </div>
+</div>
+
+<div class="btnrow">
+  <a class="btn bonus" href="{{ url_for('login_pkce') }}">Login con PKCE</a>
+</div>
+
+{% if trace and trace.code_challenge %}
+<h2>Lo que salio de tu flujo PKCE</h2>
+{{ jsonbox("Pata 2: lo que viajo al authorize endpoint", {
+    "client_id": trace.client_id,
+    "code_challenge": trace.code_challenge,
+    "code_challenge_method": "S256",
+}) }}
+<p class="muted">El <code>code_verifier</code> nunca sale del navegador hasta la pata 4, y el servidor solo guardo su hash (S256). Robar el <code>code</code> no sirve de nada.</p>
+
+{% if trace.request %}
+{{ jsonbox("Pata 4: lo que se envio al token endpoint", trace.request) }}
+<p>Fíjate: <strong>no hay <code>client_secret</code></strong>. Hay <code>code_verifier</code>.</p>
+{% endif %}
+{% endif %}
+
+<p class="hint">Y si el <code>code</code> se filtra, el atacante tendria que inventar un <code>code_verifier</code> tal que su SHA-256 dé el <code>code_challenge</code>. Eso es inviable.</p>
+{% endblock %}

@@ -1,0 +1,51 @@
+{% extends "base.html" %}
+{% from "_macros.html" import jsonbox, urlrow %}
+{% block title %}Estacion 1 - El flujo en cuatro patas{% endblock %}
+{% block content %}
+<h1>Estacion 1 &middot; El flujo en cuatro patas</h1>
+
+<p class="lead">El navegador nunca habla con la red interna. Cuatro saltos, dos.SET tres Canary y otro proceso.</p>
+
+{% if not trace %}
+<div class="warnbox">
+  <p><strong>Aun no has hecho login.</strong> Esta estacion necesita una traza real.</p>
+  <p><a class="btn" href="{{ url_for('login') }}">Hacer login ahora</a></p>
+</div>
+{% else %}
+
+<div class="legs">
+  <div class="leg"><span class="legnum">1</span><div>El navegador pide <strong>login</strong> a la app.<br><code class="url">{{ url_for('login', _external=True) }}</code></div></div>
+  <div class="leg"><span class="legnum">2</span><div>La app <strong>redirige</strong> a Keycloak con <code>client_id</code>, <code>scope</code>, <code>state</code>, <code>nonce</code>.<br><code class="url small">{{ trace.authorize_url }}</code></div></div>
+  <div class="leg"><span class="legnum">3</span><div>El usuario se autentica. Keycloak redirige al navegador con un <strong>authorization code</strong> de un solo uso.<br><code class="url">{{ trace.redirect_uri }}?code=...</code></div></div>
+  <div class="leg"><span class="legnum">4</span><div>La app <strong>cambia el code por tokens</strong> en el <em>back channel</em>: servidor a servidor, sin navegador de por medio.<br><code class="url">{{ token_endpoint }}</code></div></div>
+</div>
+
+<h2>Las dos URLs de Keycloak, lado a lado</h2>
+{{ urlrow("Lo que usa la app (internal)", internal_auth, "El contenedor main-app resuelve el nombre 'keycloak' en la red de compose.") }}
+{{ urlrow("Lo que ve el navegador (public)", public_auth, "Si esto fuera http://keycloak:8080 el login no funcionaria: el navegador no resuelve ese nombre.") }}
+
+<h2>Lo que salio de tu login</h2>
+<div class="twocol">
+  {{ jsonbox("Parametros que se mandaron a /auth", {
+      "client_id": trace.client_id,
+      "redirect_uri": trace.redirect_uri,
+      "response_type": "code",
+      "scope": trace.scope,
+      "state": trace.state,
+      "nonce": trace.nonce,
+  }) }}
+  {{ jsonbox("El authorization code que volvio", {"code": trace.code}) }}
+</div>
+
+{% if trace.response is defined %}
+<h3>Respuesta del token endpoint (pata 4)</h3>
+<p>HTTP <strong>{{ trace.response_status }}</strong> &middot; secreto enviado: {{ 'si (confidential)' if trace.is_confidential else 'no (public + PKCE)' }}</p>
+{{ jsonbox("POST /token", trace.response) }}
+{% if trace.response.error_description %}
+<p class="err">{{ trace.response.error_description }}</p>
+{% endif %}
+<p class="muted"><code>expires_in</code> son los 60 segundos del access token. Cuando muera, el <code>refresh_token</code> emite otro sin volver a preguntar al usuario.</p>
+{% endif %}
+
+{% endif %}
+{% endblock %}

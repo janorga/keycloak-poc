@@ -1,0 +1,53 @@
+{% extends "base.html" %}
+{% from "_macros.html" import jsonbox, httpstatus %}
+{% block title %}Estacion 4 - Autenticacion != Autorizacion{% endblock %}
+{% block content %}
+<h1>Estacion 4 &middot; Autenticacion no es autorizacion</h1>
+
+<p class="lead"><strong>Autenticacion</strong>: el token es valido y es de quien dice ser.<br>
+<strong>Autorizacion</strong>: ese token concreto da permiso para este recurso concreto.</p>
+
+<p>Los dos endpoints se llaman con el <strong>mismo</strong> access token. Lo unico que cambia es el rol dentro de <code>realm_access.roles</code>.</p>
+
+<div class="btnrow">
+  <a class="btn" href="{{ url_for('login') }}">Entrar como ana (admin, user)</a>
+  <a class="btn bonus" href="{{ url_for('logout') }}">Salir y entrar como luis (solo user)</a>
+</div>
+
+{% if not results %}
+<div class="warnbox">
+  <p><strong>Sin sesion.</strong> Haz login para llamar a la API.</p>
+  <p><a class="btn" href="{{ url_for('login') }}">Login OIDC</a></p>
+</div>
+{% else %}
+
+{% if refresh_trace %}
+<div class="noticebox">
+  <strong>Hubo un refresh transparente.</strong> Motivo: <code>{{ refresh_trace.reason }}</code> &middot; HTTP {{ refresh_trace.response_status }}.
+  El access token vive {{ token.expires_in }} s. No has tenido que hacer nada: la app lo renovo sola.
+</div>
+{% endif %}
+
+<div class="twocol">
+  {% for endpoint, result in results.items() %}
+  <div class="card">
+    <div class="boxtitle">GET /api/{{ endpoint }}</div>
+    {{ httpstatus(result.status) }}
+    {{ jsonbox("Respuesta", result.body) }}
+  </div>
+  {% endfor %}
+</div>
+
+<h2>El claim que decide</h2>
+{% set roles = token.claims.realm_access.roles if token.claims.realm_access else [] %}
+<p><code>realm_access.roles</code> de tu token actual: <strong>{{ roles | join(', ') if roles else '(vacio)' }}</strong></p>
+<table>
+  <tr><th>Endpoint</th><th>Rol exigido</th><th>Tu token lo tiene?</th><th>Resultado</th></tr>
+  <tr><td><code>/api/user-only</code></td><td><code>user</code></td><td>{{ 'si' if 'user' in roles else 'no' }}</td><td>{{ results['user-only'].status }}</td></tr>
+  <tr><td><code>/api/admin-only</code></td><td><code>admin</code></td><td>{{ 'si' if 'admin' in roles else 'no' }}</td><td>{{ results['admin-only'].status }}</td></tr>
+</table>
+
+<p class="lead">Cambia <code>ana</code> por <code>luis</code> y repite. El token sigue siendo valido: <strong>sigue autenticado</strong>.
+Lo que cambia es la respuesta del segundo endpoint, de 200 a 403.</p>
+{% endif %}
+{% endblock %}

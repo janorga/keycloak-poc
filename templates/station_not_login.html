@@ -1,0 +1,78 @@
+{% extends "base.html" %}
+{% from "_macros.html" import jsonbox, httpstatus, tokenbox %}
+{% block title %}Estacion 3 - OAuth2 no es login{% endblock %}
+{% block content %}
+<h1>Estacion 3 &middot; OAuth2 no es login</h1>
+
+<p class="lead">OAuth2 dice <em>"esta aplicacion puede leer tus datos"</em>. OIDC dice <em>"esta aplicacion sabe quien eres"</em>.
+La unica diferencia en la peticion es la palabra <code>openid</code>.</p>
+
+{% if token.logged_in %}
+<h2>Los tokens que tienes ahora mismo</h2>
+{{ tokenbox('access_token', token.access_token,
+            'Responde a "puede esta app leer tus datos".') }}
+{% if token.has_id_token %}
+{{ tokenbox('id_token', token.id_token,
+            'Responde a "quien eres". Solo existe si has pedido el scope openid.') }}
+{% else %}
+<div class="warnbox">
+  <p><strong>No hay <code>id_token</code> en esta sesion.</strong> Y no es un fallo:
+  esta estacion esta precisamente para eso. Pide <code>openid</code> arriba y
+  vuelve: aparecera aqui, al lado del access token.</p>
+</div>
+{% endif %}
+{% endif %}
+
+<h2>La misma peticion, sin <code>openid</code></h2>
+<div class="btnrow">
+  <a class="btn warn" href="{{ url_for('login_no_openid') }}">Login con scope: {{ scope_without_openid }}</a>
+  <a class="btn" href="{{ url_for('login') }}">Login con scope: openid (normal)</a>
+</div>
+
+{% if trace and trace.response is defined %}
+<h2>Que devolvio el token endpoint</h2>
+<p>HTTP <strong>{{ trace.response_status }}</strong> &middot; claves recibidas:
+  {% if trace.response.id_token %}<span class="badge ok">id_token</span>{% else %}<span class="badge forbidden">SIN id_token</span>{% endif %}
+  <span class="badge ok">access_token</span>
+</p>
+{{ jsonbox("Respuesta sin openid", trace.response) }}
+<p class="lead"><strong>No hay <code>id_token</code>.</strong> Se pidio OAuth2 puro, y eso es todo lo que hay.</p>
+{% endif %}
+
+<h2>Prueba: <code>/userinfo</code> para preguntar quien es el usuario</h2>
+<p><code>/userinfo</code> es un endpoint de <strong>OIDC</strong>. Le pasamos el access token a proposito:</p>
+<code class="url">{{ userinfo_endpoint }}</code>
+
+{% if userinfo %}
+<div class="box">
+  <div class="boxtitle">Respuesta real de Keycloak {{ userinfo.status }}</div>
+  {% if userinfo.status == 403 %}
+  <p><span class="badge forbidden">403 Forbidden</span> cuerpo vacio</p>
+  <p class="lead">Keycloak <strong>rechaza</strong> la llamada. Un access token sin <code>openid</code> no identifica a nadie: es una llave sin cerradura.</p>
+  {% elif userinfo.status == 200 %}
+  <p><span class="badge ok">200 OK</span></p>
+  <pre>{{ userinfo.body | pretty }}</pre>
+  <p class="lead">Si esto responde 200, tu token <strong>si</strong> venia de una peticion OIDC con <code>openid</code>.</p>
+  {% else %}
+  {{ jsonbox("Respuesta", userinfo.body) }}
+  {% endif %}
+</div>
+
+<div class="twocol">
+  <div class="box">
+    <div class="boxtitle">Sin <code>openid</code> en el scope</div>
+    <p><span class="badge forbidden">403</span> <code>/userinfo</code> no responde</p>
+    <p><span class="badge forbidden">-</span> no hay <code>id_token</code></p>
+  </div>
+  <div class="box">
+    <div class="boxtitle">Con <code>openid</code> en el scope</div>
+    <p><span class="badge ok">200</span> <code>/userinfo</code> devuelve los claims</p>
+    <p><span class="badge ok">-</span> hay <code>id_token</code></p>
+  </div>
+</div>
+{% else %}
+<p class="muted">Haz el login sin <code>openid</code> y vuelve a esta pagina.</p>
+{% endif %}
+
+<p class="hint">Nota de version: en Keycloak 26.7 el rechazo de <code>/userinfo</code> es un <strong>403</strong>, no un 401.</p>
+{% endblock %}

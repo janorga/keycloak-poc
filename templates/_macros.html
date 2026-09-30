@@ -1,0 +1,40 @@
+{% macro jsonbox(title, value) %}
+<div class="box">
+  <div class="boxtitle">{{ title }}</div>
+  <pre>{{ value | pretty if value is not string else value }}</pre>
+</div>
+{% endmacro %}
+
+{% macro httpstatus(status) %}
+{% if status == 200 %}<span class="badge ok">{{ status }} OK</span>
+{% elif status == 403 %}<span class="badge forbidden">{{ status }} Forbidden</span>
+{% elif status == 401 %}<span class="badge forbidden">{{ status }} Unauthorized</span>
+{% else %}<span class="badge bad">{{ status }}</span>{% endif %}
+{% endmacro %}
+
+{% macro urlrow(label, value, note) %}
+<div class="urlrow">
+  <div class="urllabel">{{ label }}</div>
+  <code class="url">{{ value }}</code>
+  {% if note %}<div class="urlnote">{{ note }}</div>{% endif %}
+</div>
+{% endmacro %}
+
+{# The whole token in one piece, ready to be copied into jwt.io.
+   Collapsed by default on purpose: it is ~900 characters, and the point of
+   these stations is the DECOMPOSED token. This is the "take it away" block. #}
+{% macro tokenbox(label, value, hint='') %}
+{% if value %}
+<details class="tokenbox">
+  <summary>{{ label }} <span class="muted">({{ value | length }} caracteres, base64url: no es cifrado)</span></summary>
+  <pre class="tokenraw">{{ value }}</pre>
+  <div class="tokenactions">
+    <button type="button" class="btn copytok" data-target="tok-{{ label | replace(' ', '-') | lower }}">Copiar</button>
+    <a class="btn" href="https://jwt.io/#token={{ value }}" target="_blank" rel="noopener noreferrer"
+       title="Abre jwt.io con este token. Envia el token a un servicio externo: solo tiene sentido con un token de demo.">Abrir en jwt.io</a>
+  </div>
+  <textarea id="tok-{{ label | replace(' ', '-') | lower }}" class="hiddentext" readonly>{{ value }}</textarea>
+  {% if hint %}<p class="muted">{{ hint }}</p>{% endif %}
+</details>
+{% endif %}
+{% endmacro %}

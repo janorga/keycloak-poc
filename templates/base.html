@@ -1,0 +1,70 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <title>{% block title %}AuthLab{% endblock %}</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+  <header>
+    <div class="brand">AuthLab <span class="muted">OAuth2 + OIDC</span></div>
+    <nav>
+      <a href="{{ url_for('index') }}">Inicio</a>
+      <a href="{{ url_for('station_flow') }}">1. Flujo</a>
+      <a href="{{ url_for('station_jwt') }}">2. JWT</a>
+      <a href="{{ url_for('station_not_login') }}">3. No es login</a>
+      <a href="{{ url_for('station_roles') }}">4. AuthN != AuthZ</a>
+      <a href="{{ url_for('station_pkce') }}">5. PKCE</a>
+    </nav>
+  </header>
+
+  {% if token and token.logged_in %}
+  <div class="statusbar">
+    <span class="badge ok">sesion activa</span>
+    <span>variante: <code>{{ token.variant }}</code></span>
+    <span>caduca en <strong>{{ token.expires_in }} s</strong></span>
+    <span>refreshes transparentes: <strong>{{ token.refresh_count }}</strong></span>
+    <span>id_token: {{ 'si' if token.has_id_token else 'NO' }}</span>
+    <a href="{{ url_for('refresh') }}">forzar refresh</a>
+    <a href="{{ url_for('logout') }}">logout</a>
+  </div>
+  {% else %}
+  <div class="statusbar idle">
+    <span class="badge">sin sesion</span>
+    <a href="{{ url_for('login') }}">login OIDC</a>
+  </div>
+  {% endif %}
+
+  <main>
+    {% block content %}{% endblock %}
+  </main>
+
+  <script>
+    // Copy buttons for the raw token blocks. Kept tiny and dependency-free: this
+    // is a teaching lab, and the clipboard is only used to move a demo token to
+    // jwt.io so students can decode it themselves.
+    document.querySelectorAll('.copytok').forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        var field = document.getElementById(btn.dataset.target);
+        if (!field) return;
+        var done = function () {
+          var old = btn.textContent;
+          btn.textContent = 'Copiado';
+          setTimeout(function () { btn.textContent = old; }, 1500);
+        };
+        if (navigator.clipboard && window.isSecureContext) {
+          navigator.clipboard.writeText(field.value).then(done, function () { field.select(); });
+        } else {
+          // http:// on a LAN address is not a secure context, so the async
+          // clipboard API is unavailable. Fall back to selecting the text so the
+          // student can copy it by hand.
+          field.classList.remove('hiddentext');
+          field.select();
+          done();
+          field.classList.add('hiddentext');
+        }
+      });
+    });
+  </script>
+</body>
+</html>

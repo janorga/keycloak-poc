@@ -1,0 +1,44 @@
+{% extends "base.html" %}
+{% block title %}AuthLab - Inicio{% endblock %}
+{% block content %}
+<h1>Laboratorio OAuth2 + OIDC</h1>
+
+<div class="creds">
+  <h2>Credenciales (estacion 0)</h2>
+  <table>
+    <tr><th>Usuario</th><th>Contrasena</th><th>Roles de realm</th><th>Resultado esperado</th></tr>
+    <tr><td><code>ana</code></td><td><code>ana</code></td><td>admin, user</td><td><code>/api/user-only</code> 200 &middot; <code>/api/admin-only</code> 200</td></tr>
+    <tr><td><code>luis</code></td><td><code>luis</code></td><td>user</td><td><code>/api/user-only</code> 200 &middot; <code>/api/admin-only</code> 403</td></tr>
+  </table>
+  <p class="muted">Consola de administracion: <a href="{{ public_root }}/admin/" target="_blank" rel="noopener">{{ public_root }}/admin</a> &middot; admin / admin</p>
+</div>
+
+<h2>Las cuatro URLs que mas confunden a la gente</h2>
+<div class="twocol">
+  <div class="box">
+    <div class="boxtitle">internal_url (contenedor &rarr; contenedor)</div>
+    <code class="url">{{ internal_url }}</code>
+    <p class="muted">Solo existe dentro de la red de docker. <strong>El navegador no puede resolver <code>keycloak</code>.</strong> Es la que usan <code>main-app</code> y <code>resource-server</code>.</p>
+  </div>
+  <div class="box">
+    <div class="boxtitle">public_url (navegador &rarr; contenedor)</div>
+    <code class="url">{{ public_url }}</code>
+    <p class="muted">Esta es la que va en la barra de direcciones y dentro de <code>redirect_uri</code>.</p>
+  </div>
+</div>
+
+<h2>Entrar</h2>
+<div class="btnrow">
+  <a class="btn" href="{{ url_for('login') }}">Login OIDC normal</a>
+  <a class="btn" href="{{ url_for('login_scope_extended') }}">Login con scope extra</a>
+  <a class="btn warn" href="{{ url_for('login_no_openid') }}">Login SIN <code>openid</code></a>
+  <a class="btn bonus" href="{{ url_for('login_pkce') }}">Login PKCE (publico)</a>
+</div>
+
+<p class="hint">Orden recomendado: login normal &rarr; estacion 1 &rarr; estacion 2 &rarr; login con scope extra &rarr; volver a la estacion 2 para ver el diff &rarr; login sin openid &rarr; estacion 3 &rarr; login como luis &rarr; estacion 4.</p>
+
+{% if traces %}
+<h2>Trazas de tu sesion</h2>
+<p class="muted">{{ traces.keys() | list | join(', ') }}</p>
+{% endif %}
+{% endblock %}

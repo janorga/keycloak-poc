@@ -1,0 +1,23 @@
+{% extends "base.html" %}
+{% from "_macros.html" import jsonbox %}
+{% block title %}Refresh del access token{% endblock %}
+{% block content %}
+<h1>Refresh del access token</h1>
+
+{% if ok %}
+<p class="lead ok-line">Refresh correcto. El access token nuevo dura otros 60 s.</p>
+{% else %}
+<p class="lead err">El refresh fallo. Sesion invalidada: hay que volver a hacer login.</p>
+{% endif %}
+
+{% if trace %}
+<p>Motivo: <code>{{ trace.reason }}</code> &middot; HTTP {{ trace.response_status }}</p>
+<div class="twocol">
+  {{ jsonbox("POST /token (grant_type=refresh_token)", trace.request) }}
+  {{ jsonbox("Respuesta", trace.response) }}
+</div>
+<p class="muted">El navegador no participa. Esto pasa servidor a servidor: el <code>refresh_token</code> es de larga duracion y el <code>access_token</code> es de corta.</p>
+{% endif %}
+
+<p><a href="{{ url_for('station_roles') }}">Ir a la estacion 4</a></p>
+{% endblock %}
