@@ -30,7 +30,8 @@
 
 <div class="twocol">
   {% for endpoint, result in results.items() %}
-  <div class="card">
+  {% set mod = 'ok' if result.status == 200 else 'deny' %}
+  <div class="card mod-{{ mod }}">
     <div class="boxtitle">GET /api/{{ endpoint }}</div>
     {{ httpstatus(result.status) }}
     {{ jsonbox("Respuesta", result.body) }}

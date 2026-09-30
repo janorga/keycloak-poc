@@ -6,34 +6,37 @@
   <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
 </head>
 <body>
-  <header>
-    <div class="brand">AuthLab <span class="muted">OAuth2 + OIDC</span></div>
-    <nav>
-      <a href="{{ url_for('index') }}">Inicio</a>
-      <a href="{{ url_for('station_flow') }}">1. Flujo</a>
-      <a href="{{ url_for('station_jwt') }}">2. JWT</a>
-      <a href="{{ url_for('station_not_login') }}">3. No es login</a>
-      <a href="{{ url_for('station_roles') }}">4. AuthN != AuthZ</a>
-      <a href="{{ url_for('station_pkce') }}">5. PKCE</a>
-    </nav>
-  </header>
+  {% set current = request.endpoint %}
+  <div class="topbar">
+    <header>
+      <div class="brand">AuthLab <span class="muted">OAuth2 + OIDC</span></div>
+      <nav>
+        <a href="{{ url_for('index') }}"{% if current == 'index' %} aria-current="page"{% endif %}>Inicio</a>
+        <a href="{{ url_for('station_flow') }}"{% if current == 'station_flow' %} aria-current="page"{% endif %}>1. Flujo</a>
+        <a href="{{ url_for('station_jwt') }}"{% if current == 'station_jwt' %} aria-current="page"{% endif %}>2. JWT</a>
+        <a href="{{ url_for('station_not_login') }}"{% if current == 'station_not_login' %} aria-current="page"{% endif %}>3. No es login</a>
+        <a href="{{ url_for('station_roles') }}"{% if current == 'station_roles' %} aria-current="page"{% endif %}>4. AuthN != AuthZ</a>
+        <a href="{{ url_for('station_pkce') }}"{% if current == 'station_pkce' %} aria-current="page"{% endif %}>5. PKCE</a>
+      </nav>
+    </header>
 
-  {% if token and token.logged_in %}
-  <div class="statusbar">
-    <span class="badge ok">sesion activa</span>
-    <span>variante: <code>{{ token.variant }}</code></span>
-    <span>caduca en <strong>{{ token.expires_in }} s</strong></span>
-    <span>refreshes transparentes: <strong>{{ token.refresh_count }}</strong></span>
-    <span>id_token: {{ 'si' if token.has_id_token else 'NO' }}</span>
-    <a href="{{ url_for('refresh') }}">forzar refresh</a>
-    <a href="{{ url_for('logout') }}">logout</a>
+    {% if token and token.logged_in %}
+    <div class="statusbar">
+      <span class="badge ok">sesion activa</span>
+      <span>variante: <code>{{ token.variant }}</code></span>
+      <span>caduca en <strong>{{ token.expires_in }} s</strong></span>
+      <span>refreshes transparentes: <strong>{{ token.refresh_count }}</strong></span>
+      <span>id_token: {{ 'si' if token.has_id_token else 'NO' }}</span>
+      <a href="{{ url_for('refresh') }}">forzar refresh</a>
+      <a href="{{ url_for('logout') }}">logout</a>
+    </div>
+    {% else %}
+    <div class="statusbar idle">
+      <span class="badge">sin sesion</span>
+      <a href="{{ url_for('login') }}">login OIDC</a>
+    </div>
+    {% endif %}
   </div>
-  {% else %}
-  <div class="statusbar idle">
-    <span class="badge">sin sesion</span>
-    <a href="{{ url_for('login') }}">login OIDC</a>
-  </div>
-  {% endif %}
 
   <main>
     {% block content %}{% endblock %}

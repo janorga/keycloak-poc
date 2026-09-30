@@ -1,15 +1,60 @@
-{% macro jsonbox(title, value) %}
-<div class="box">
+{# mod is the tone modifier for the wrapper (mod-ok, mod-deny, mod-warn,
+   mod-bonus, mod-accent). Empty keeps the plain class="box" so untouched
+   pages are unaffected. #}
+{% macro jsonbox(title, value, mod='') %}
+<div class="box{% if mod %} mod-{{ mod }}{% endif %}">
   <div class="boxtitle">{{ title }}</div>
   <pre>{{ value | pretty if value is not string else value }}</pre>
 </div>
 {% endmacro %}
 
+{# The glyph is the point: ~8% of the class cannot separate red from green, so
+   200 and 403 are also told apart by symbol and by the word itself. #}
 {% macro httpstatus(status) %}
-{% if status == 200 %}<span class="badge ok">{{ status }} OK</span>
-{% elif status == 403 %}<span class="badge forbidden">{{ status }} Forbidden</span>
-{% elif status == 401 %}<span class="badge forbidden">{{ status }} Unauthorized</span>
+{% if status == 200 %}<span class="badge ok">&#10003; {{ status }} OK</span>
+{% elif status == 403 %}<span class="badge forbidden">&#10007; {{ status }} Forbidden</span>
+{% elif status == 401 %}<span class="badge forbidden">&#10007; {{ status }} Unauthorized</span>
 {% else %}<span class="badge bad">{{ status }}</span>{% endif %}
+{% endmacro %}
+
+{# The sequence diagram. One macro for both variants on purpose: the whole
+   point of station 1 next to station 5 is that the skeleton is IDENTICAL and
+   only the credential changes. Writing it twice as copy-paste would hide the
+   comparison, which is the thing the class is meant to see.
+
+   Four lifelines, in the order the messages happen:
+     1 Usuario   2 Navegador   3 App Flask   4 Keycloak
+
+   fase2_extra is what PKCE adds to the /auth redirect (the challenge).
+   credential is what phase 4 sends instead of a shared secret. Everything
+   else is the same line, so the eye lands on the difference. #}
+{% macro seqdiagram(title, client_id, fase2_extra, credential, trace=None) %}
+<div class="seqwrap">
+  <div class="boxtitle">{{ title }}</div>
+  <div class="seqclients"><code>{{ client_id }}</code></div>
+
+  <div class="seqhead">
+    <div class="actor">Usuario</div>
+    <div class="actor">Navegador</div>
+    <div class="actor">App Flask</div>
+    <div class="actor">Keycloak</div>
+  </div>
+
+  <div class="seqbody">
+    <div class="m f-2 t-3"><span class="lbl">GET /login</span></div>
+    <div class="m f-3 t-2"><span class="lbl">302 &rarr; /auth<br>state, nonce{% if fase2_extra %}<br>+ code_challenge{% endif %}</span></div>
+    <div class="m f-2 t-4"><span class="lbl">GET /auth</span></div>
+    <div class="m f-1 t-2"><span class="lbl">credenciales</span></div>
+    <div class="m f-4 t-2"><span class="lbl">302 &rarr; /callback?code&state</span></div>
+    <div class="m f-2 t-3"><span class="lbl">GET /callback?code&state</span></div>
+    <div class="m f-3 t-4 backchannel"><span class="lbl">POST /token<br>{code, {{ credential }}}</span></div>
+    <div class="m f-4 t-3"><span class="lbl">{access_token, id_token}</span></div>
+  </div>
+
+  <p class="seqnote"><span class="chip bc">back channel</span> {{ credential }} viaja de la app a
+  Keycloak <strong>sin pasar por el navegador</strong>. Es la unica fase que no se ve en la
+  barra de direcciones.</p>
+</div>
 {% endmacro %}
 
 {% macro urlrow(label, value, note) %}

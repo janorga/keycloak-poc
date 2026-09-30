@@ -21,9 +21,9 @@
 {% set parts = token.access_token.split('.') %}
 <h2>Las tres partes</h2>
 <div class="twocol">
-  {{ jsonbox("1. Header", parts[0] | b64decode | fromjson) }}
-  {{ jsonbox("2. Payload (los claims)", token.claims) }}
-  <div class="box">
+  {{ jsonbox("1. Header", parts[0] | b64decode | fromjson, 'bonus') }}
+  {{ jsonbox("2. Payload (los claims)", token.claims, 'warn') }}
+  <div class="box mod-accent">
     <div class="boxtitle">3. Signature</div>
     <pre>{{ parts[2][:120] }}...</pre>
     <p class="muted">La firma es lo que impide editar el payload. Verificarla exige la clave publica de Keycloak (JWKS). Esta pagina <strong>no</strong> la verifica: solo mira.</p>
@@ -50,15 +50,15 @@
 {% if diff %}
 <p>Comparando <strong>{{ diff.previous_variant }}</strong> (anterior) contra <strong>{{ diff.current_variant }}</strong> (actual).</p>
 <div class="threecol">
-  <div class="box">
+  <div class="box mod-ok">
     <div class="boxtitle">Anadidos ({{ diff.added | length }})</div>
     {% if diff.added %}<pre>{{ diff.added | pretty }}</pre>{% else %}<p class="muted">ninguno</p>{% endif %}
   </div>
-  <div class="box">
+  <div class="box mod-deny">
     <div class="boxtitle">Quitados ({{ diff.removed | length }})</div>
     {% if diff.removed %}<pre>{{ diff.removed | pretty }}</pre>{% else %}<p class="muted">ninguno</p>{% endif %}
   </div>
-  <div class="box">
+  <div class="box mod-warn">
     <div class="boxtitle">Cambiados ({{ diff.changed | length }})</div>
     {% if diff.changed %}<pre>{{ diff.changed | pretty }}</pre>{% else %}<p class="muted">ninguno</p>{% endif %}
   </div>
