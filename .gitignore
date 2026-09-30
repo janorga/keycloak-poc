@@ -22,6 +22,12 @@ config_compose.yaml
 realm/lab-realm.json
 # Which host the running stack was built with. Local state, not project config.
 .authlab-host.last
+# Same idea, for the compose variable substitution. docker compose reads this
+# file automatically, and start.sh exports the variable itself, so this only
+# matters when someone runs `docker compose up` by hand -- which is exactly the
+# case that used to recreate Keycloak with ${AUTHLAB_HOST:-localhost} and break
+# every login without saying a word.
+.env
 # Local Pi runtime state
 .atl/
 # Agent task logs (odd/tasks/...). Local run state, not project content.
