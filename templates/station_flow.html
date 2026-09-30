@@ -1,10 +1,10 @@
 {% extends "base.html" %}
-{% from "_macros.html" import jsonbox, urlrow %}
-{% block title %}Estacion 1 - El flujo en cuatro patas{% endblock %}
+{% from "_macros.html" import jsonbox, urlrow, seqdiagram %}
+{% block title %}Estacion 1 - El flujo en cuatro fases{% endblock %}
 {% block content %}
-<h1>Estacion 1 &middot; El flujo en cuatro patas</h1>
+<h1>Estacion 1 &middot; El flujo en cuatro fases</h1>
 
-<p class="lead">El navegador nunca habla con la red interna. Cuatro saltos, dos.SET tres Canary y otro proceso.</p>
+<p class="lead">El navegador nunca habla con la red interna. De los cuatro saltos, tres pasan por el navegador y el cuarto lo hacen dos procesos entre sí.</p>
 
 {% if not trace %}
 <div class="warnbox">
@@ -19,6 +19,21 @@
   <div class="leg"><span class="legnum">3</span><div>El usuario se autentica. Keycloak redirige al navegador con un <strong>authorization code</strong> de un solo uso.<br><code class="url">{{ trace.redirect_uri }}?code=...</code></div></div>
   <div class="leg"><span class="legnum">4</span><div>La app <strong>cambia el code por tokens</strong> en el <em>back channel</em>: servidor a servidor, sin navegador de por medio.<br><code class="url">{{ token_endpoint }}</code></div></div>
 </div>
+
+<h2>Los dos clientes, el mismo esqueleto</h2>
+<p class="lead">Mismo flujo, mismos cuatro saltos, mismos participantes. Lo unico que cambia es
+<strong>que se manda en la fase 4</strong>. Mira las dos flechas marcadas.</p>
+
+<div class="twocol seqcol">
+  {{ seqdiagram("Cliente confidencial", client_id, none, "client_secret", traces.get('oidc')) }}
+  {{ seqdiagram("Cliente publico (PKCE)", public_client_id, "si", "code_verifier", traces.get('pkce')) }}
+</div>
+
+<p class="muted">Lo que hace PKCE no es esconder el secreto en otro sitio: es
+<strong>sustituir un secreto estatico y compartido por uno por peticion que la propia app
+genera</strong>. Por eso un cliente que no puede guardar nada (una app movil, un SPA)
+puede hablar con Keycloak sin <code>client_secret</code>. Lo ves entero en la
+<a href="{{ url_for('station_pkce') }}">estacion 5</a>.</p>
 
 <h2>Las dos URLs de Keycloak, lado a lado</h2>
 {{ urlrow("Lo que usa la app (internal)", internal_auth, "El contenedor main-app resuelve el nombre 'keycloak' en la red de compose.") }}
@@ -38,7 +53,7 @@
 </div>
 
 {% if trace.response is defined %}
-<h3>Respuesta del token endpoint (pata 4)</h3>
+<h3>Respuesta del token endpoint (fase 4)</h3>
 <p>HTTP <strong>{{ trace.response_status }}</strong> &middot; secreto enviado: {{ 'si (confidential)' if trace.is_confidential else 'no (public + PKCE)' }}</p>
 {{ jsonbox("POST /token", trace.response) }}
 {% if trace.response.error_description %}
