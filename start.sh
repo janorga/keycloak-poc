@@ -239,7 +239,7 @@ cat <<BANNER
 
   --------------------------------------------------------------
     RUTAS
-      /station/flow         1. El flujo en cuatro patas
+      /station/flow         1. El flujo en cuatro fases
       /station/jwt          2. Anatomia del JWT y diff de claims
       /station/not-login    3. OAuth2 no es login
       /station/roles        4. AuthN != AuthZ

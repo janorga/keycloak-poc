@@ -52,21 +52,44 @@ Señala las dos URLs del centro:
 
 ---
 
-## Min 5–15 · Estación 1 — El flujo en cuatro patas
+## Min 5–15 · Estación 1 — El flujo en cuatro fases
 
 `/station/flow` — **con una sesión ya iniciada** (haz login como `ana` antes).
 
-Las cuatro patas, con las URLs literales de tu propio login:
+Las cuatro fases, con las URLs literales de tu propio login:
 
 1. El navegador pide `/login` a la app.
 2. La app **redirige** a Keycloak con `client_id`, `scope`, `state`, `nonce`.
 3. El usuario se autentica. Keycloak redirige con un **authorization code**.
 4. La app cambia el code por tokens en el **back channel**.
 
-Insiste en tres cosas:
+### El diagrama: los dos clientes lado a lado
+
+Más abajo hay **dos diagramas de secuencia, en paralelo**, con el mismo esqueleto.
+Úsalo así:
+
+1. Señala las cuatro líneas de vida: Usuario, Navegador, App Flask, Keycloak.
+2. "Las mismas ocho flechas en los dos. Recorridas con el dedo si hace falta."
+3. Ve a la **flecha punteada**, la de la fase 4, en ámbar. Es el **back channel**:
+   salta de la App a Keycloak **sin tocar el navegador**. Es la única así.
+4. Ahora la diferencia: en el de la izquierda pone `client_secret`; en el de la
+   derecha, `code_verifier`.
+
+> "Mismo flujo, mismos saltos, mismos participantes. Lo único que ha cambiado es
+> una credencial. Eso, y nada más, es lo que aporta PKCE: cambiar un secreto
+> estático y compartido por uno que la app genera en cada login."
+
+La flecha de la derecha es **discontinua** a propósito. Señálalo:
+
+> "Y mirad por qué es punteada y no continua. Porque no la veis nunca. Es
+> tráfico entre dos contenedores que no pasa por el navegador, así que no sale
+> en la barra de direcciones. Por eso el `client_secret` en una app de móvil es
+> una ingenuidad: lo puede leer cualquiera con el móvil en la mano."
+
+Insiste además en tres cosas de la lista de fases:
 
 - **El code no es un token.** Es un sobre cerrado. La app no puede leer nada con él.
-- **La pata 4 no pasa por el navegador.** Si se pudiera ver, el `client_secret`
+- **La fase 4 no pasa por el navegador.** Si se pudiera ver, el `client_secret`
   viajaría por el cable del portátil.
 - **`state` y `nonce` van y vuelven.** `state` ata la respuesta a *este* navegador
   (evita CSRF). `nonce` ata el `id_token` a *esta* sesión.
