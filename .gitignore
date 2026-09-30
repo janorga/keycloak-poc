@@ -13,3 +13,16 @@ wheels/
 # Configuration files with sensitive data
 config.yaml
 config_compose.yaml
+# Resolved at startup from the .template files. Contains the local host/IP, so
+# it must never be committed. The templates are the source of truth.
+.generated/
+# Same idea, for the files that used to be resolved in place. start.sh only
+# reads the *.template versions; these leftovers carry a hardcoded localhost.
+config_compose.yaml
+realm/lab-realm.json
+# Which host the running stack was built with. Local state, not project config.
+.authlab-host.last
+# Local Pi runtime state
+.atl/
+# Agent task logs (odd/tasks/...). Local run state, not project content.
+odd/

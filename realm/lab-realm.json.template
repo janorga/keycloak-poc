@@ -1,0 +1,289 @@
+{
+  "realm": "lab",
+  "displayName": "Laboratorio OAuth2",
+  "enabled": true,
+  "sslRequired": "none",
+  "registrationAllowed": false,
+  "resetPasswordAllowed": false,
+  "rememberMe": false,
+  "verifyEmail": false,
+  "accessTokenLifespan": 60,
+  "ssoSessionIdleTimeout": 1800,
+  "ssoSessionMaxLifespan": 36000,
+  "eventsEnabled": true,
+  "eventsExpiration": 0,
+  "adminEventsEnabled": true,
+  "adminEventsDetailsEnabled": true,
+  "defaultRoles": [],
+  "defaultDefaultClientScopes": [
+    "roles",
+    "basic-profile"
+  ],
+  "clientScopes": [
+    {
+      "name": "roles",
+      "description": "Realm and client roles. This is what produces the realm_access claim that station 4 authorizes on.",
+      "protocol": "openid-connect",
+      "attributes": {
+        "include.in.token.scope": "true",
+        "display.on.consent.screen": "true"
+      },
+      "protocolMappers": [
+        {
+          "name": "realm roles",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-usermodel-realm-role-mapper",
+          "consentRequired": false,
+          "config": {
+            "multivalued": "true",
+            "claim.name": "realm_access.roles",
+            "jsonType.label": "String",
+            "id.token.claim": "true",
+            "access.token.claim": "true",
+            "introspection.token.claim": "true",
+            "userinfo.token.claim": "true"
+          }
+        },
+        {
+          "name": "client roles",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-usermodel-client-role-mapper",
+          "consentRequired": false,
+          "config": {
+            "multivalued": "true",
+            "claim.name": "resource_access.${client_id}",
+            "jsonType.label": "String",
+            "id.token.claim": "false",
+            "access.token.claim": "true",
+            "introspection.token.claim": "true"
+          }
+        }
+      ]
+    },
+    {
+      "name": "basic-profile",
+      "description": "Just enough profile claims to make the JWT anatomy table worth looking at.",
+      "protocol": "openid-connect",
+      "attributes": {
+        "include.in.token.scope": "true",
+        "display.on.consent.screen": "false"
+      },
+      "protocolMappers": [
+        {
+          "name": "email",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-usermodel-attribute-mapper",
+          "consentRequired": false,
+          "config": {
+            "user.attribute": "email",
+            "claim.name": "email",
+            "jsonType.label": "String",
+            "id.token.claim": "true",
+            "access.token.claim": "true",
+            "userinfo.token.claim": "true"
+          }
+        },
+        {
+          "name": "given name",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-usermodel-attribute-mapper",
+          "consentRequired": false,
+          "config": {
+            "user.attribute": "firstName",
+            "claim.name": "given_name",
+            "jsonType.label": "String",
+            "id.token.claim": "true",
+            "access.token.claim": "true",
+            "userinfo.token.claim": "true"
+          }
+        },
+        {
+          "name": "family name",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-usermodel-attribute-mapper",
+          "consentRequired": false,
+          "config": {
+            "user.attribute": "lastName",
+            "claim.name": "family_name",
+            "jsonType.label": "String",
+            "id.token.claim": "true",
+            "access.token.claim": "true",
+            "userinfo.token.claim": "true"
+          }
+        }
+      ]
+    },
+    {
+      "name": "demo-perfil",
+      "description": "Optional scope used by the JWT station. Asking for one more scope adds one more claim. The diff is the lesson.",
+      "protocol": "openid-connect",
+      "attributes": {
+        "include.in.token.scope": "true",
+        "display.on.consent.screen": "false"
+      },
+      "protocolMappers": [
+        {
+          "name": "demo scope claim",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-hardcoded-claim-mapper",
+          "consentRequired": false,
+          "config": {
+            "claim.name": "demo_perfil",
+            "claim.value": "solo-visible-porque-pidiste-demo-perfil",
+            "jsonType.label": "String",
+            "id.token.claim": "true",
+            "access.token.claim": "true",
+            "introspection.token.claim": "true"
+          }
+        }
+      ]
+    }
+  ],
+  "roles": {
+    "realm": [
+      {
+        "name": "user",
+        "description": "Any authenticated member of the lab",
+        "composite": false,
+        "clientRole": false
+      },
+      {
+        "name": "admin",
+        "description": "Lab administrator, the only role allowed on /api/admin-only",
+        "composite": false,
+        "clientRole": false
+      }
+    ]
+  },
+  "clients": [
+    {
+      "clientId": "web-confidential",
+      "name": "Web app (confidential client)",
+      "description": "The Flask app. Keeps a secret to itself for the back channel. Issues a 60 s access token so the refresh token gets demonstrated live.",
+      "enabled": true,
+      "protocol": "openid-connect",
+      "publicClient": false,
+      "bearerOnly": false,
+      "standardFlowEnabled": true,
+      "implicitFlowEnabled": false,
+      "directAccessGrantsEnabled": false,
+      "serviceAccountsEnabled": false,
+      "secret": "demo-secret-web-confidential",
+      "redirectUris": [
+        "http://${AUTHLAB_HOST}:9090/callback",
+        "http://${AUTHLAB_HOST}:9090/callback/no-openid",
+        "http://${AUTHLAB_HOST}:9090/callback/scope",
+        "http://${AUTHLAB_HOST}:9090/callback/pkce"
+      ],
+      "webOrigins": [
+        "http://${AUTHLAB_HOST}:9090"
+      ],
+      "attributes": {
+        "access.token.lifespan": "60",
+        "post.logout.redirect.uris": "http://${AUTHLAB_HOST}:9090/*"
+      },
+      "defaultClientScopes": [
+        "roles",
+        "basic-profile"
+      ],
+      "optionalClientScopes": [
+        "demo-perfil"
+      ],
+      "protocolMappers": [
+        {
+          "name": "audience-api-resource",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-audience-mapper",
+          "consentRequired": false,
+          "config": {
+            "included.client.audience": "api-resource",
+            "id.token.claim": "false",
+            "access.token.claim": "true",
+            "introspection.token.claim": "true"
+          }
+        }
+      ]
+    },
+    {
+      "clientId": "web-public-pkce",
+      "name": "Web app (public client + PKCE)",
+      "description": "No secret, so PKCE S256 is mandatory. Used for the bonus station.",
+      "enabled": true,
+      "protocol": "openid-connect",
+      "publicClient": true,
+      "bearerOnly": false,
+      "standardFlowEnabled": true,
+      "implicitFlowEnabled": false,
+      "directAccessGrantsEnabled": false,
+      "serviceAccountsEnabled": false,
+      "redirectUris": [
+        "http://${AUTHLAB_HOST}:9090/callback/pkce"
+      ],
+      "webOrigins": [
+        "http://${AUTHLAB_HOST}:9090"
+      ],
+      "attributes": {
+        "access.token.lifespan": "60",
+        "pkce.code.challenge.method": "S256"
+      },
+      "defaultClientScopes": [
+        "roles",
+        "basic-profile"
+      ],
+      "optionalClientScopes": [
+        "demo-perfil"
+      ]
+    },
+    {
+      "clientId": "api-resource",
+      "name": "Resource server",
+      "description": "Bearer-only client. Stands for the API. Its client id is what the audience mapper writes into the access token.",
+      "enabled": true,
+      "protocol": "openid-connect",
+      "publicClient": false,
+      "bearerOnly": true,
+      "standardFlowEnabled": false,
+      "directAccessGrantsEnabled": false,
+      "serviceAccountsEnabled": false
+    }
+  ],
+  "users": [
+    {
+      "username": "ana",
+      "enabled": true,
+      "emailVerified": true,
+      "firstName": "Ana",
+      "lastName": "Nunez",
+      "email": "ana@lab.example",
+      "credentials": [
+        {
+          "type": "password",
+          "value": "ana",
+          "temporary": false
+        }
+      ],
+      "realmRoles": [
+        "admin",
+        "user"
+      ]
+    },
+    {
+      "username": "luis",
+      "enabled": true,
+      "emailVerified": true,
+      "firstName": "Luis",
+      "lastName": "Perez",
+      "email": "luis@lab.example",
+      "credentials": [
+        {
+          "type": "password",
+          "value": "luis",
+          "temporary": false
+        }
+      ],
+      "realmRoles": [
+        "user"
+      ]
+    }
+  ]
+}

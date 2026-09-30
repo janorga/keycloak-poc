@@ -1,21 +1,61 @@
+# AuthLab - demo class stack.
+#
+# Keycloak is pinned BY DIGEST on purpose. Never `latest` for a projected class:
+# a silent upstream change is exactly the kind of thing that fails 5 minutes before
+# the session starts.
 services:
   keycloak:
-    image: quay.io/keycloak/keycloak:latest
+    image: quay.io/keycloak/keycloak@sha256:37dbaf6f0722c9ec246335f36e1ef8b2e6cb960f7c27e0d8c615121a3d475a85
     container_name: authlab-keycloak
     environment:
-      - KEYCLOAK_ADMIN=admin
-      - KEYCLOAK_ADMIN_PASSWORD=admin
+      # 26.x renamed these; KEYCLOAK_ADMIN / KEYCLOAK_ADMIN_PASSWORD are deprecated
+      # and are removed in 27.
+      - KC_BOOTSTRAP_ADMIN_USERNAME=admin
+      - KC_BOOTSTRAP_ADMIN_PASSWORD=admin
       - KC_HTTP_PORT=8080
+      # Pin the issuer to the browser-visible name. Without this, Keycloak derives
+      # `iss` from whichever Host header it saw, so tokens minted through
+      # localhost:8080 carry one issuer and the same server reached as
+      # keycloak:8080 expects another. The refresh grant then fails with
+      # "Invalid token issuer", because main-app refreshes over the back channel.
+      # start.sh resolves this to .generated/realm/lab-realm.json with the real
+      # host in the redirect URIs. AUTHLAB_HOST is a bare host: an IP, a DNS name
+      # or a VM hostname. Never a URL (no scheme, no port, no path).
+      - KC_HOSTNAME=http://${AUTHLAB_HOST:-localhost}:8080
+      - KC_HOSTNAME_STRICT=false
+      # CRITICAL: without this the management port 9000 is closed and
+      # /health/ready answers 404, so this container never turns healthy and
+      # everything with `depends_on: service_healthy` waits forever.
+      - KC_HEALTH_ENABLED=true
     ports:
       - "8080:8080"
-    command: start-dev
+    volumes:
+      # The realm is imported on first boot, so nobody has to click in the console.
+      # Mounted from .generated/, NOT from ./realm/: start.sh copies the template
+      # there with AUTHLAB_HOST resolved. The template keeps the redirect URIs
+      # host-agnostic, so no IP is ever committed to the repo.
+      - ./.generated/realm:/opt/keycloak/data/import:ro
+    # --import-realm only applies when the realm does not already exist. reset.sh
+    # uses `down -v` to wipe the volume so the import runs again.
+    command: start-dev --import-realm
     networks:
       - authlab-network
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8080/health/ready"]
+      # Two traps here, both of which cost a full class if you hit them live:
+      #   1. In 26.x the health endpoints live on the MANAGEMENT port 9000, not 8080.
+      #   2. The Keycloak image is UBI-micro based and ships WITHOUT curl, so the
+      #      obvious `CMD curl -f ...` fails with "executable file not found in $PATH"
+      #      and never probes anything at all. We use bash's /dev/tcp instead.
+      test:
+        - CMD-SHELL
+        - >-
+          exec 3<>/dev/tcp/127.0.0.1/9000 &&
+          printf 'GET /health/ready HTTP/1.1\r\nHost: localhost\r\nConnection: close\r\n\r\n' >&3 &&
+          grep -q '"status": "UP"' <&3
       interval: 10s
       timeout: 5s
-      retries: 5
+      retries: 10
+      # Since 26.7 the HTTP ports open before the migration finishes, so give it room.
       start_period: 60s
 
   main-app:
@@ -35,7 +75,7 @@ services:
     environment:
       - PYTHONUNBUFFERED=1
     volumes:
-      - ./config_compose.yaml:/app/config.yaml:ro
+      - ./.generated/config.yaml:/app/config.yaml:ro
     restart: unless-stopped
 
   resource-server:
@@ -51,7 +91,7 @@ services:
       keycloak:
         condition: service_healthy
     volumes:
-      - ./config_compose.yaml:/app/config.yaml:ro
+      - ./.generated/config.yaml:/app/config.yaml:ro
     restart: unless-stopped
     # No ports exposed - only accessible internally
 

@@ -1,0 +1,47 @@
+# Config used by the docker compose stack (mounted as /app/config.yaml).
+#
+# Two Keycloak URLs on purpose. This is the single most confusing thing in the
+# whole lab, so it is named explicitly instead of hidden:
+#
+#   internal_url -> container to container. main-app and resource-server call this.
+#                   The BROWSER cannot resolve `keycloak`, it is a compose DNS name.
+#   public_url   -> browser to container. This is the one that goes into
+#                   redirect_uri, into the address bar, and into the links we show.
+#
+# The demo secret is public on purpose. It is a teaching lab, it is published in
+# git, and "a secret leaked in a repo" is worth ten minutes of class on its own.
+keycloak:
+  internal_url: "http://keycloak:8080/realms/lab"
+  public_url: "http://${AUTHLAB_HOST}:8080/realms/lab"
+  client_id: "web-confidential"
+  # DEMO SECRET. Published on purpose, never reuse it anywhere real.
+  client_secret: "demo-secret-web-confidential"
+  public_client_id: "web-public-pkce"
+  audience: "api-resource"
+
+flask:
+  debug: true
+  port: 9090
+  host: "0.0.0.0"
+  # DEMO ONLY. A real deployment reads this from the environment.
+  secret_key: "demo-only-flask-session-key"
+  # Must be the URL the BROWSER uses, because it is what becomes the redirect_uri.
+  base_url: "http://${AUTHLAB_HOST}:9090"
+
+oauth:
+  # OIDC: `openid` is what turns OAuth2 into "login".
+  # NOTE: only `openid` is requested here. The `roles` and `basic-profile` client
+  # scopes are attached as DEFAULT scopes to the client in realm/lab-realm.json,
+  # so they come along without being named. Asking for `profile`/`email` would
+  # fail with invalid_scope, because this lab's realm does not define them.
+  scope: "openid"
+  # Station 3: same request minus `openid`. No id_token is issued.
+  scope_without_openid: "roles basic-profile"
+  # Station 2: adds one more scope, so the diff shows exactly one more claim.
+  scope_extended: "openid demo-perfil"
+
+resource_server:
+  debug: true
+  port: 9091
+  host: "0.0.0.0"
+  url: "http://resource-server:9091"
