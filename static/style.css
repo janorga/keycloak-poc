@@ -1,0 +1,466 @@
+/* AuthLab - presentation layer.
+   Tuned for a projected classroom, not for a desk: the type scale starts at
+   18px, every status carries a NON-COLOUR channel, and nothing depends on
+   hover. Roughly 8% of any class cannot separate red from green, and "200 vs
+   403" is the single idea station 4 exists to land, so every tone here is
+   reinforced with shape, weight or text. Offline by design: system fonts
+   only, no webfonts, no icons, no build step, no animations or transitions. */
+
+:root {
+  /* --- Neutrals ---------------------------------------------------------- */
+  --bg: #ffffff;
+  --surface: #f2f5f9;
+  --line: #c8d0da;
+  --ink: #14181d;
+  --muted: #5a636f;
+
+  /* --- Actions (RESERVED) ------------------------------------------------
+     --accent is for things you can DO: links and primary buttons. It is NOT
+     a state colour. If a block means "granted" or "denied" or "changed" it
+     belongs to one of the four semantic tones below, never to --accent. The
+     one documented exception is .mod-accent (JWT header/payload/signature),
+     which is an identity, not a state. */
+  --accent: #1a4fd6;
+  --accent-bg: #e3ecfd;
+  --accent-line: #1a4fd6;
+  /* Text drawn on top of a dark fill. Named so that no rule outside :root has
+     to hardcode a hex. */
+  --on-dark: #ffffff;
+
+  /* --- Semantic tones ----------------------------------------------------
+     Each tone is ink / soft background / border. The ink is dark enough to
+     clear 4.5:1 against its own background even after a projector crushes
+     the highlights, and the background is saturated rather than pastel so it
+     still reads as a block of colour through a washed-out lamp. */
+  --ok: #0b6b32;    /* 200 / allowed / added */
+  --ok-bg: #dff2e4;
+  --ok-line: #1a8a45;
+
+  --deny: #9b1220;  /* 403, 401 / denied / removed */
+  --deny-bg: #fde8ea;
+  --deny-line: #c22a3f;
+
+  --warn: #7a3d00;  /* warnings, attention, the payload block, changed */
+  --warn-bg: #fdefd6;
+  --warn-line: #c0760a;
+
+  --bonus: #5b1fb8; /* PKCE and other extras */
+  --bonus-bg: #ece4fd;
+  --bonus-line: #7c3fd4;
+
+  /* --- Flow ramp ---------------------------------------------------------
+     Legs 1..4 only. A single-hue blue ramp encodes SEQUENCE, not outcome, so
+     the four semantic tones keep their meaning everywhere else. */
+  --ramp-1: #b9cef7;
+  --ramp-2: #7ba1ec;
+  --ramp-3: #3f6fdc;
+  --ramp-4: #1440b8;
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  font-family: -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  color: var(--ink);
+  background: var(--bg);
+  font-size: 18px;
+  line-height: 1.55;
+}
+
+a { color: var(--accent); }
+
+/* Keyboard navigation is the only affordance a projector user cannot see
+   with a mouse, so the ring is thick and offset rather than subtle. */
+a:focus-visible,
+button:focus-visible,
+summary:focus-visible {
+  outline: 3px solid var(--ink);
+  outline-offset: 3px;
+  border-radius: 2px;
+}
+
+/* --- Sticky top area -----------------------------------------------------
+   Opaque on purpose: a transparent sticky bar lets the content underneath
+   bleed through as you scroll and makes both unreadable. */
+.topbar {
+  position: sticky;
+  top: 0;
+  z-index: 20;
+  background: var(--bg);
+  border-bottom: 3px solid var(--line);
+}
+
+header {
+  display: flex;
+  align-items: center;
+  gap: 24px;
+  padding: 14px 28px;
+  flex-wrap: wrap;
+}
+.brand { font-weight: 700; font-size: 22px; }
+header nav { display: flex; gap: 8px; flex-wrap: wrap; }
+header nav a {
+  color: var(--accent);
+  text-decoration: none;
+  font-weight: 600;
+  font-size: 17px;
+  padding: 6px 12px;
+  border-radius: 6px;
+  border-bottom: 4px solid transparent;
+}
+/* The active station must be findable from the back row in one glance, so it
+   is a filled block rather than a slightly darker line. */
+header nav a[aria-current="page"] {
+  background: var(--accent);
+  color: var(--on-dark);
+  border-bottom-color: var(--ink);
+}
+
+.statusbar {
+  display: flex;
+  gap: 22px;
+  align-items: center;
+  flex-wrap: wrap;
+  padding: 10px 28px;
+  background: var(--surface);
+  border-top: 1px solid var(--line);
+  font-size: 17px;
+}
+/* The countdown is the one live number on screen; it gets real weight. */
+.statusbar strong { font-weight: 800; font-size: 1.2em; font-variant-numeric: tabular-nums; }
+.statusbar.idle { background: var(--bg); }
+.statusbar a { color: var(--accent); font-weight: 600; }
+
+main { padding: 24px 28px 70px; max-width: 1400px; }
+
+h1 { font-size: 40px; margin: 12px 0 18px; line-height: 1.2; }
+h2 { font-size: 28px; margin: 34px 0 12px; line-height: 1.25; }
+h3 { font-size: 23px; margin: 24px 0 10px; }
+
+.lead { font-size: 22px; max-width: 1000px; }
+.big { font-size: 24px; }
+.hint, .muted { color: var(--muted); font-size: 17px; }
+.err { color: var(--deny); }
+.ok-line { color: var(--ok); }
+
+code, pre {
+  font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+}
+code { background: var(--surface); padding: 1px 5px; border-radius: 3px; font-size: 0.95em; }
+pre {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  padding: 12px 14px;
+  overflow-x: auto;
+  font-size: 15.5px;
+  line-height: 1.45;
+  margin: 0;
+  white-space: pre-wrap;
+  word-break: break-all;
+}
+
+.url { display: block; background: var(--surface); border: 1px solid var(--line);
+       padding: 9px 12px; border-radius: 5px; word-break: break-all; font-size: 16.5px; }
+.url.small { font-size: 14.5px; }
+.urlrow { margin: 10px 0; }
+.urllabel { font-weight: 700; margin-bottom: 4px; }
+.urlnote { color: var(--muted); font-size: 16px; margin-top: 4px; }
+
+.box { border: 1px solid var(--line); border-radius: 8px; padding: 14px 16px; margin: 12px 0; background: var(--bg); }
+.boxtitle { font-weight: 700; margin-bottom: 8px; font-size: 19px; }
+.card { border: 1px solid var(--line); border-radius: 8px; padding: 14px 16px; }
+
+/* min() keeps a track from ever exceeding the container, so a phone falls
+   back to one column instead of a horizontal scroll. */
+.twocol { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(430px, 100%), 1fr)); gap: 18px; }
+.threecol { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(290px, 100%), 1fr)); gap: 18px; }
+
+/* --- Status badges -------------------------------------------------------
+   Big, and outlined in the tone: the border is what survives greyscale and
+   a colour-blind projection, so 200 and 403 stay distinguishable. The glyph
+   comes from the httpstatus macro. */
+.badge {
+  display: inline-block; padding: 4px 14px; border-radius: 20px;
+  font-size: 17px; font-weight: 700; background: var(--surface); color: var(--ink);
+  border: 2px solid var(--line);
+}
+.badge.ok { background: var(--ok-bg); color: var(--ok); border-color: var(--ok-line); }
+.badge.forbidden, .badge.bad { background: var(--deny-bg); color: var(--deny); border-color: var(--deny-line); }
+
+.btn {
+  display: inline-block; padding: 11px 20px; border-radius: 6px;
+  background: var(--accent); color: var(--on-dark); text-decoration: none;
+  font-weight: 600; font-size: 17px; margin: 4px 8px 4px 0; border: none;
+}
+.btn.warn { background: var(--warn); }
+.btn.bonus { background: var(--bonus); }
+/* Inline code inside a button would otherwise be a light chip carrying the
+   button's white text, i.e. white on near-white: "Login SIN openid" rendered
+   as "Login SIN" plus a blank box. A button has no room for a chip anyway. */
+.btn code { background: transparent; color: inherit; padding: 0; border-radius: 0; }
+.btnrow { margin: 18px 0; }
+
+/* --- Tone modifiers ------------------------------------------------------
+   One mechanism, four (plus one) tones. A modifier only sets the three
+   custom properties; the shared rules below turn them into a thick left bar,
+   a tinted panel and tinted code. Adding a tone never means writing new
+   rules, and `class="box mod-warn"` is the whole contract. */
+.mod-ok    { --tone: var(--ok);    --tone-bg: var(--ok-bg);    --tone-line: var(--ok-line); }
+.mod-deny  { --tone: var(--deny);  --tone-bg: var(--deny-bg);  --tone-line: var(--deny-line); }
+.mod-warn  { --tone: var(--warn);  --tone-bg: var(--warn-bg);  --tone-line: var(--warn-line); }
+.mod-bonus { --tone: var(--bonus); --tone-bg: var(--bonus-bg); --tone-line: var(--bonus-line); }
+/* Documented exception to the "accent is actions only" rule: the three parts
+   of a JWT are an IDENTITY (header / payload / signature), not a state, and
+   they need three distinguishable tones side by side. The four state tones
+   keep their meaning everywhere else. */
+.mod-accent { --tone: var(--accent); --tone-bg: var(--accent-bg); --tone-line: var(--accent-line); }
+
+.mod-ok, .mod-deny, .mod-warn, .mod-bonus, .mod-accent {
+  background: var(--tone-bg);
+  border-color: var(--tone-line);
+  border-left: 8px solid var(--tone);
+}
+.mod-ok .boxtitle, .mod-deny .boxtitle, .mod-warn .boxtitle,
+.mod-bonus .boxtitle, .mod-accent .boxtitle { color: var(--tone); }
+
+/* A `pre` inside a toned panel sits on the panel's own background, so a
+   projected column reads as one block instead of a neutral box inside a
+   coloured one. */
+.box pre, .card pre, tr pre { background: var(--tone-bg, var(--surface)); border-color: var(--tone-line, var(--line)); }
+
+/* A result card wraps its response in a plain .box (jsonbox with no tone).
+   Let that box join the toned panel instead of stamping a white rectangle
+   over the colour, and let the stripe texture reach the content. */
+.card[class*="mod-"] > .box { background: transparent; border-color: var(--tone-line); }
+.card[class*="mod-"] > .box pre { background: transparent; }
+
+/* Row flavour of the same mechanism, for tables. */
+tr.mod-ok td    { background: var(--ok-bg);    border-left-color: var(--ok-line); }
+tr.mod-deny td  { background: var(--deny-bg);  border-left-color: var(--deny-line); }
+tr.mod-warn td  { background: var(--warn-bg);  border-left-color: var(--warn-line); }
+tr.mod-bonus td { background: var(--bonus-bg); border-left-color: var(--bonus-line); }
+tr[class*="mod-"] td:first-child { border-left: 6px solid var(--tone-line); }
+
+/* THE most important rule in this file. A granted and a denied endpoint must
+   be unmistakable with ZERO colour perception, because station 4 is the whole
+   argument and ~8% of the room cannot separate red from green. Granted is
+   clean and flat with a solid bar; denied adds a dashed outline and a
+   diagonal stripe texture, so shape and texture carry the distinction. */
+.card.mod-deny {
+  border: 3px dashed var(--deny-line);
+  border-left: 8px solid var(--deny);
+  background-color: var(--deny-bg);
+  background-image: repeating-linear-gradient(45deg,
+    rgba(155, 18, 32, 0.09) 0 14px,
+    rgba(155, 18, 32, 0) 14px 28px);
+}
+
+/* --- Flow legs -----------------------------------------------------------
+   The ramp encodes SEQUENCE, not outcome: step 4 is not "better" than step
+   1, it is simply further along. Using the four semantic tones here would
+   make the class read outcomes into a list of steps. */
+.legs { display: grid; gap: 12px; margin: 20px 0; }
+.leg {
+  display: flex; gap: 16px; align-items: flex-start;
+  border: 1px solid var(--line); border-left: 8px solid var(--ramp-1);
+  border-radius: 6px; padding: 13px 16px; background: var(--surface);
+}
+.legnum {
+  flex: 0 0 38px; height: 38px; border-radius: 50%;
+  background: var(--ramp-1); color: var(--ink);
+  display: flex; align-items: center; justify-content: center;
+  font-weight: 800; font-size: 19px;
+}
+.legs .leg:nth-child(1) { border-left-color: var(--ramp-1); }
+.legs .leg:nth-child(2) { border-left-color: var(--ramp-2); }
+.legs .leg:nth-child(3) { border-left-color: var(--ramp-3); }
+.legs .leg:nth-child(4) { border-left-color: var(--ramp-4); }
+.legs .leg:nth-child(1) .legnum { background: var(--ramp-1); color: var(--ink); }
+.legs .leg:nth-child(2) .legnum { background: var(--ramp-2); color: var(--ink); }
+.legs .leg:nth-child(3) .legnum { background: var(--ramp-3); color: var(--on-dark); }
+.legs .leg:nth-child(4) .legnum { background: var(--ramp-4); color: var(--on-dark); }
+
+table { border-collapse: collapse; width: 100%; margin: 14px 0; font-size: 17px; }
+th, td { border: 1px solid var(--line); padding: 9px 12px; text-align: left; }
+th { background: var(--surface); }
+/* The highlighted claim is the payload, so it borrows the payload box's amber
+   instead of the old green: the student can point at "the amber box" and say
+   "the amber row" without being told. */
+tr.hl td { background: var(--warn-bg); font-weight: 600; }
+tr.hl td:first-child { border-left: 8px solid var(--warn); }
+
+.creds { border: 1px solid var(--line); border-radius: 8px; padding: 14px 18px; margin: 18px 0; }
+.warnbox { border: 2px solid var(--warn-line); background: var(--warn-bg); border-left: 8px solid var(--warn); border-radius: 8px; padding: 16px 20px; margin: 20px 0; }
+.noticebox { border: 2px solid var(--ok-line); background: var(--ok-bg); border-left: 8px solid var(--ok); border-radius: 8px; padding: 14px 18px; margin: 18px 0; }
+
+/* Raw token block (station 2 and 3). Collapsed by default: the point of these
+   stations is the DECOMPOSED token, and ~900 raw characters would bury it. */
+.tokenbox { border: 1px solid var(--line); border-radius: 8px; padding: 12px 16px; margin: 16px 0; background: var(--bg); }
+.tokenbox > summary { cursor: pointer; font-weight: 700; font-size: 19px; }
+pre.tokenraw { word-break: break-all; white-space: pre-wrap; font-size: 14.5px; margin: 12px 0; }
+.tokenactions { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
+.tokenactions .btn { text-decoration: none; }
+.hiddentext { position: absolute; left: -9999px; opacity: 0; }
+
+/* --- Sequence diagram (station 1) ----------------------------------------
+   Four lifelines drawn as one repeating gradient rather than four extra
+   elements per diagram: 25% of the width per column, 1px rule at each centre.
+   The --f / --t custom properties ARE the arrow: --f is the lifeline it
+   leaves, --t the one it reaches, so the markup reads as plain English
+   ("from 3 to 4" = app to Keycloak) and needs no per-arrow CSS. */
+.seqwrap { border: 1px solid var(--line); border-radius: 8px; padding: 14px 16px 12px; background: var(--bg); }
+.seqclients { font-size: 15px; margin: 2px 0 12px; }
+
+.seqhead, .seqbody { display: grid; grid-template-columns: repeat(4, 1fr); }
+.seqhead { border-bottom: 2px solid var(--line); padding-bottom: 8px; margin-bottom: 4px; }
+.actor {
+  text-align: center; font-weight: 700; font-size: 16px; color: var(--ink);
+  /* The dot that visually anchors the lifeline to its name. */
+  position: relative;
+}
+.actor::after {
+  content: ""; position: absolute; left: 50%; bottom: -14px;
+  width: 9px; height: 9px; margin-left: -4.5px; border-radius: 50%;
+  background: var(--accent); border: 2px solid var(--bg);
+}
+
+.seqbody {
+  background-image: repeating-linear-gradient(
+    to right,
+    transparent 0, transparent calc(12.5% - 1px),
+    var(--line) calc(12.5% - 1px), var(--line) 12.5%,
+    transparent 12.5%, transparent 25%
+  );
+}
+
+/* Each message is a grid cell of its own, spanning exactly the lifelines it
+   touches. The label is then a normal centred block inside that cell, so it can
+   never escape sideways. An earlier version positioned the label absolutely on
+   a percentage of the whole diagram, which made a short arrow's label collide
+   with its neighbours: on a projector, unreadable. */
+.m {
+  position: relative; height: 66px; padding: 3px 4px 0;
+  display: flex; align-items: flex-start; justify-content: center;
+  text-align: center;
+}
+/* Labels break BETWEEN words, never inside one. `anywhere` was splitting
+   "302" into "3" over "0" over "2" on a narrow column, which is exactly the
+   kind of thing that reads as a bug from the back of a classroom. */
+.m .lbl {
+  position: relative; z-index: 1;
+  font-size: 12.5px; line-height: 1.25; color: var(--ink);
+  background: var(--bg); padding: 1px 5px; border-radius: 4px;
+  overflow-wrap: normal; word-break: keep-all;
+}
+/* The shaft, inset half a column at each end so it starts and finishes on the
+   lifeline centres rather than on the column edges. */
+.m::before {
+  content: ""; position: absolute; top: 40px; height: 2px;
+  left: calc((var(--f) - 0.5) * 25%);
+  width: calc((var(--t) - var(--f)) * 25%);
+  background: var(--muted);
+}
+/* The head. Drawn as a triangle so no glyph or icon font is needed. */
+.m::after {
+  content: ""; position: absolute; top: 34px;
+  left: calc((var(--t) - 0.5) * 25%);
+  margin-left: -2px;
+  border: 6px solid transparent;
+  border-left: 9px solid var(--muted);
+  border-right: 0;
+}
+
+/* --f is the lifeline the message leaves and --t the one it reaches, so the
+   markup reads as plain English ("f-3 t-4" = app to Keycloak). The cell spans
+   from --f to --t inclusive, and the shaft below is inset half a column at each
+   end so it starts and lands on the lifeline centres, not the column edges. */
+.m.f-1 { grid-column: 1 / 2; --f: 1; }
+.m.f-2 { grid-column: 2 / 3; --f: 2; }
+.m.f-3 { grid-column: 3 / 4; --f: 3; }
+.m.f-4 { grid-column: 4 / 5; --f: 4; }
+.m.t-2 { grid-column-end: 3; --t: 2; }
+.m.t-3 { grid-column-end: 4; --t: 3; }
+.m.t-4 { grid-column-end: 5; --t: 4; }
+.m.f-2.t-2, .m.f-3.t-3, .m.f-4.t-4 { grid-column-end: auto; }
+/* A message between two lifelines needs a little breathing room, otherwise the
+   two shafts of the rows above and below sit right on its label. */
+.m { margin: 1px 0; }
+
+/* The back channel. Dashed, because a solid arrow reads as "the browser did
+   this" once you have eight of them on screen, and amber because it is the
+   one phase the browser never sees. */
+.m.backchannel::before {
+  background: none;
+  border-top: 3px dashed var(--warn);
+  height: 0;
+}
+.m.backchannel::after { border-left-color: var(--warn); }
+.m.backchannel .lbl {
+  color: var(--warn); font-weight: 700;
+  background: var(--warn-bg); border: 1px solid var(--warn-line);
+}
+
+.chip {
+  display: inline-block; font-size: 12.5px; font-weight: 700;
+  padding: 1px 8px; border-radius: 20px; margin-right: 6px;
+  background: var(--warn-bg); color: var(--warn); border: 1px solid var(--warn-line);
+  text-transform: uppercase; letter-spacing: 0.03em;
+}
+
+.seqnote { font-size: 14.5px; color: var(--muted); margin: 10px 0 0; }
+.seqnote strong { color: var(--ink); }
+.seqcol { align-items: start; }
+
+/* --- Breakpoints ---------------------------------------------------------
+   The grid tracks already collapse on their own; these breakpoints tighten
+   the chrome so a phone in the third row is not squinting at a desktop
+   layout, and a tablet does not get projector-sized gutters. */
+@media (max-width: 900px) {
+  header { padding: 12px 18px; gap: 14px; }
+  header nav { gap: 6px; }
+  .statusbar { padding: 10px 18px; gap: 14px; }
+  main { padding: 20px 18px 60px; }
+  .twocol, .threecol { gap: 14px; }
+  h1 { font-size: 34px; }
+  h2 { font-size: 25px; }
+  .lead { font-size: 20px; }
+}
+
+@media (max-width: 620px) {
+  /* A phone screen is small, so the base size comes down; the type scale
+     keeps its ratios. */
+  body { font-size: 16px; }
+  h1 { font-size: 28px; }
+  h2 { font-size: 22px; }
+  h3 { font-size: 20px; }
+  .lead { font-size: 18px; }
+  .big { font-size: 20px; }
+  pre { font-size: 14px; }
+  table { font-size: 15px; }
+  main { padding: 16px 12px 50px; }
+  /* The status bar is a read-out, not a toolbar: stack it so no field is
+     truncated mid-word. */
+  .statusbar { flex-direction: column; align-items: flex-start; gap: 6px; padding: 10px 12px; }
+  .btn { display: block; width: 100%; text-align: center; margin: 6px 0; }
+  .tokenactions .btn { width: auto; }
+}
+
+/* --- Print (the student handout) ----------------------------------------
+   Strip the chrome, keep every word of teaching content, and force the
+   background inks to actually print: without print-color-adjust the tones
+   are dropped and the whole colour system disappears from paper. */
+@media print {
+  * { print-color-adjust: exact; -webkit-print-color-adjust: exact; }
+  body { background: var(--bg); color: var(--ink); }
+  header, .statusbar, .btn, .btnrow, .tokenactions { display: none; }
+  .topbar { position: static; border-bottom: 0; }
+  main { padding: 0; max-width: none; }
+  a { color: var(--accent); }
+  .box, .card, .creds, .tokenbox, table, pre { break-inside: avoid; page-break-inside: avoid; }
+  h1, h2, h3 { break-after: avoid; page-break-after: avoid; }
+  /* The stripe texture survives in print, but a dashed outline plus the tone
+     already carries the distinction, so drop the texture to save toner. */
+  .card.mod-deny { background-image: none; }
+}

@@ -17,6 +17,9 @@ COPY main.py ./
 # The station screens. Without this the app boots and every /station/* route
 # 500s on a missing template.
 COPY templates ./templates
+# The stylesheet. Flask serves /static/* from this directory, so without this
+# copy /static/style.css 404s and every screen renders as raw unstyled HTML.
+COPY static ./static
 
 # Expose the application port
 EXPOSE 9090
